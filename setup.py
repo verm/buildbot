@@ -67,6 +67,7 @@ setup_args = {
     'packages': ["buildbot",
               "buildbot.status", "buildbot.status.web",
               "buildbot.changes",
+              "buildbot.jobs",
               "buildbot.steps",
               "buildbot.process",
               "buildbot.clients",
