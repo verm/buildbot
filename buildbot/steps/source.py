@@ -395,7 +395,7 @@ class SVN(Source):
 
 
     def computeSourceRevision(self, changes):
-        if not changes:
+        if not changes or None in [c.revision for c in changes]:
             return None
         lastChange = max([int(c.revision) for c in changes])
         return lastChange
@@ -591,7 +591,9 @@ class Git(Source):
         return changes[-1].revision
 
     def startVC(self, branch, revision, patch):
-        self.args['branch'] = branch
+        if branch is not None:
+            self.args['branch'] = branch
+
         self.args['revision'] = revision
         self.args['patch'] = patch
         slavever = self.slaveVersion("git")

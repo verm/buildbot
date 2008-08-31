@@ -26,7 +26,7 @@ from buildbot.status.builder import Status
 from buildbot.changes.changes import Change, ChangeMaster
 from buildbot.sourcestamp import SourceStamp
 from buildbot.buildslave import BuildSlave
-from buildbot import interfaces
+from buildbot import interfaces, locks
 from buildbot.process.properties import Properties
 
 ########################################
@@ -210,6 +210,7 @@ class BotMaster(service.MultiService):
         @param lockid: a locks.MasterLock or locks.SlaveLock instance
         @return: a locks.RealMasterLock or locks.RealSlaveLock instance
         """
+        assert isinstance(lockid, (locks.MasterLock, locks.SlaveLock))
         if not lockid in self.locks:
             self.locks[lockid] = lockid.lockClass(lockid)
         # if the master.cfg file has changed maxCount= on the lock, the next
@@ -635,28 +636,32 @@ class BuildMaster(service.MultiService, styles.Versioned):
 
         # assert that all locks used by the Builds and their Steps are
         # uniquely named.
-        locks = {}
+        lock_dict = {}
         for b in builders:
             for l in b.get('locks', []):
-                if locks.has_key(l.name):
-                    if locks[l.name] is not l:
+                if isinstance(l, locks.LockAccess): # User specified access to the lock
+                    l = l.lockid
+                if lock_dict.has_key(l.name):
+                    if lock_dict[l.name] is not l:
                         raise ValueError("Two different locks (%s and %s) "
                                          "share the name %s"
-                                         % (l, locks[l.name], l.name))
+                                         % (l, lock_dict[l.name], l.name))
                 else:
-                    locks[l.name] = l
+                    lock_dict[l.name] = l
             # TODO: this will break with any BuildFactory that doesn't use a
             # .steps list, but I think the verification step is more
             # important.
             for s in b['factory'].steps:
                 for l in s[1].get('locks', []):
-                    if locks.has_key(l.name):
-                        if locks[l.name] is not l:
+                    if isinstance(l, locks.LockAccess): # User specified access to the lock
+                        l = l.lockid
+                    if lock_dict.has_key(l.name):
+                        if lock_dict[l.name] is not l:
                             raise ValueError("Two different locks (%s and %s)"
                                              " share the name %s"
-                                             % (l, locks[l.name], l.name))
+                                             % (l, lock_dict[l.name], l.name))
                     else:
-                        locks[l.name] = l
+                        lock_dict[l.name] = l
 
         if not isinstance(properties, dict):
             raise ValueError("c['properties'] must be a dictionary")

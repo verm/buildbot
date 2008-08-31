@@ -877,6 +877,11 @@ class SlaveFileDownloadCommand(Command):
         self.path = os.path.join(self.builder.basedir,
                                  self.workdir,
                                  os.path.expanduser(self.filename))
+
+        dirname = os.path.dirname(self.path)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
         try:
             self.fp = open(self.path, 'wb')
             if self.debug:
@@ -1827,14 +1832,14 @@ class Git(SourceBase):
         else:
             head = 'FETCH_HEAD'
 
-        command = ['git-reset', '--hard', head]
+        command = ['git', 'reset', '--hard', head]
         c = ShellCommand(self.builder, command, self._fullSrcdir(),
                          sendRC=False, timeout=self.timeout)
         self.command = c
         return c.start()
 
     def doVCUpdate(self):
-        command = ['git-fetch', self.repourl, self.branch]
+        command = ['git', 'fetch', self.repourl, self.branch]
         self.sendStatus({"header": "fetching branch %s from %s\n"
                                         % (self.branch, self.repourl)})
         c = ShellCommand(self.builder, command, self._fullSrcdir(),
@@ -1850,7 +1855,7 @@ class Git(SourceBase):
 
     def doVCFull(self):
         os.mkdir(self._fullSrcdir())
-        c = ShellCommand(self.builder, ['git-init'], self._fullSrcdir(),
+        c = ShellCommand(self.builder, ['git', 'init'], self._fullSrcdir(),
                          sendRC=False, timeout=self.timeout)
         self.command = c
         d = c.start()
@@ -1859,7 +1864,7 @@ class Git(SourceBase):
         return d
 
     def parseGotRevision(self):
-        command = ['git-rev-parse', 'HEAD']
+        command = ['git', 'rev-parse', 'HEAD']
         c = ShellCommand(self.builder, command, self._fullSrcdir(),
                          sendRC=False, keepStdout=True)
         c.usePTY = False

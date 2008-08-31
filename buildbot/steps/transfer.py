@@ -15,6 +15,12 @@ class _FileWriter(pb.Referenceable):
     """
 
     def __init__(self, destfile, maxsize, mode):
+        # Create missing directories.
+        destfile = os.path.abspath(destfile)
+        dirname = os.path.dirname(destfile)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
         self.destfile = destfile
         self.fp = open(destfile, "wb")
         if mode is not None:
