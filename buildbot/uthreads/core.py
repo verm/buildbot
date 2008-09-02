@@ -276,11 +276,18 @@ class uThread(object):
                     if isinstance(f, failure.Failure):
                         # getting the traceback object is a bit tricky in Twisted
                         if hasattr(f, 'getTracebackObject'):
-                            exc_info = (f.type, f.value, f.getTracebackObject())
+                            tb = f.getTracebackObject()
                         elif hasattr(f, 'tb'):
-                            exc_info = (f.type, f.value, f.tb)
+                            tb = f.tb
                         else:
-                            exc_info = (f.type, f.value, None)
+                            tb = None
+                        # Twisted has a tendency to call "cleanFailure" too much; this
+                        # throws out the original Python traceback and substitutes a
+                        # "fake" traceback, which won't fool throw().  Such is life with
+                        # Twisted.
+                        if tb is not None and not isinstance(tb, types.TracebackType):
+                            tb = None
+                        exc_info = (f.type, f.value, tb)
                     else:
                         exc_info = (type(f), f, None) # TODO: is this right? can it happen?
                     self._stepfn = self._stack[-1].throw
