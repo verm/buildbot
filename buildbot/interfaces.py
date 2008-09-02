@@ -8,6 +8,7 @@ from zope.interface import Interface
 
 # import sub-packages' interfaces
 from buildbot.jobs.interfaces import *
+from buildbot.framework.interfaces import *
 
 # exceptions that can be raised while trying to start a build
 class NoSlaveError(Exception):

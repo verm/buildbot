@@ -7,7 +7,6 @@ import os
 import sys
 import time
 import thread
-from test.test_support import *
 from twisted.internet import defer
 from twisted.trial import unittest
 
