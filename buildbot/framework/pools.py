@@ -84,6 +84,9 @@ class ServicePool(service.MultiService):
         self.useNewMembers = useNewMembers
         self.poolmembers = {}
 
+    def __len__(self):
+        return len(self.poolmembers)
+
     def markOld(self):
         """
         Mark all existing members as "old".
