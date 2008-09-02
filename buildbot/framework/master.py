@@ -84,12 +84,15 @@ class BuildMaster(service.MultiService):
         service.MultiService.stopService(self)
 
     @uthreads.uthreaded
-    def loadConfig(self):
-        configFile = os.path.join(self.masterdir, 'config.py')
+    def loadConfig(self, openConfigFile_for_tests=None):
+        if openConfigFile_for_tests:
+            f = openConfigFile_for_tests
+        else:
+            configFile = os.path.join(self.masterdir, 'config.py')
 
-        log.msg("loading configuration from '%s'" % configFile)
+            log.msg("loading configuration from '%s'" % configFile)
 
-        f = open(configFile, "r")
+            f = open(configFile, "r")
 
         # create a dictionary from buildbot.config's namespace, omitting private
         # names beginning with a '_'
@@ -101,7 +104,8 @@ class BuildMaster(service.MultiService):
 
         new_slaves = []
         def addSlave(sl):
-            assert interfaces.ISlave.providedBy(sl)
+            assert interfaces.ISlave.providedBy(sl), \
+                "%s is not an ISlave" % sl
             sl.buildmaster = self
             new_slaves.append(sl)
             return sl
@@ -109,7 +113,8 @@ class BuildMaster(service.MultiService):
 
         new_srcmgrs = []
         def addSourceManager(srcmgr):
-            assert interfaces.ISourceManager.providedBy(srcmgr)
+            assert interfaces.ISourceManager.providedBy(srcmgr), \
+                "%s is not an ISourceManager" % srcmgr
             srcmgr.buildmaster = self
             new_srcmgrs.append(srcmgr)
             return srcmgr
@@ -117,7 +122,8 @@ class BuildMaster(service.MultiService):
 
         new_scheds = []
         def addScheduler(sched):
-            assert interfaces.IScheduler.providedBy(sched)
+            assert interfaces.IScheduler.providedBy(sched), \
+                "%s is not an IScheduler" % sched
             sched.buildmaster = self
             new_scheds.append(sched)
             return sched
