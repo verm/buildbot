@@ -1,4 +1,4 @@
-from uthreads.core import \
+from buildbot.uthreads.core import \
     uSleepQueue, uThread, \
     current_thread, \
     spawn, sleep, \

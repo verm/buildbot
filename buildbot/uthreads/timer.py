@@ -5,7 +5,7 @@ import types
 
 from twisted.internet import defer, reactor
 
-from uthreads import *
+from buildbot.uthreads import *
 
 __all__ = [
     'Timer',

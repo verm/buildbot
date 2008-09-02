@@ -3,7 +3,7 @@ import sys
 from Queue import Empty, Full
 from collections import deque
 
-from uthreads import *
+from buildbot.uthreads import *
 
 __all__ = [
     'Lock',
