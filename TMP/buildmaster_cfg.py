@@ -2,6 +2,7 @@
 # ex: set syntax=python:
 
 import re
+from buildbot.resources.schedulers.dummysched import DummyScheduler
 
 #srcmgr = addSourceManager(
 #    DirectorySourceManager(
@@ -12,11 +13,10 @@ import re
 #    ))
 
 
-#sched = addScheduler(
-#    BuildChangesScheduler(
-#        name="buildit",
-#        sourceManager=srcmgr,
-#    ))
+sched = addScheduler(
+    DummyScheduler(
+        name="buildit",
+    ))
 
 #sl = addSlave(
 #    Slave(
