@@ -11,11 +11,15 @@ class DummyScheduler(scheduler.Scheduler):
     """
     implements(interfaces.IScheduler)
 
-    def __init__(self, name):
+    def __init__(self, name, action, *args, **kwargs):
         """
         @param name: name of this scheduler
         """
         scheduler.Scheduler.__init__(self, name)
+        self.action = action
+        self.args = args
+        self.kwargs = kwargs
+
         self.timer = None
 
     def startService(self):
@@ -28,4 +32,4 @@ class DummyScheduler(scheduler.Scheduler):
 
     def doBuild(self):
         self.timer = None
-        log.msg("Time to make the donuts")
+        uthreads.spawn(self.action(*self.args, **self.kwargs))
