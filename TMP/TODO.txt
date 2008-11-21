@@ -1,0 +1,11 @@
+Write classes and interfaces to represent the history of a build; something
+like
+ Project
+   Step
+   Step
+     [Step
+       [Step]]
+         Log
+         Log
+
+and where some steps are tagged as "builds" for display purposes
