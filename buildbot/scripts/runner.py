@@ -216,7 +216,7 @@ class Maker:
                                  robots_txt)
 
     def check_master_cfg(self):
-        from buildbot.master import BuildMaster
+        from buildbot.framework import BuildMaster
         from twisted.python import log, failure
 
         master_cfg = os.path.join(self.basedir, "master.cfg")
@@ -336,7 +336,7 @@ class MasterOptions(MakerBase):
 
 masterTAC = """
 from twisted.application import service
-from buildbot.master import BuildMaster
+from buildbot.framework.master import BuildMaster
 
 basedir = r'%(basedir)s'
 configfile = r'%(config)s'

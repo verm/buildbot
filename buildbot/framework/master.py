@@ -31,12 +31,16 @@ class BuildMaster(service.MultiService):
 
     @ivar schedulerPool: pool of schedulers
     @type schedulerPool: L{buildbot.framework.pools.ServicePool}
+
+    @ivar masterdir: root directory for the buildmaster
+    @type masterdir: string
     """
 
-    def __init__(self, masterdir):
+    def __init__(self, masterdir, configFile):
         service.MultiService.__init__(self)
         self.setName("buildmaster")
         self.masterdir = masterdir
+        self.configFile = configFile
 
         self.slavePool = pools.ServicePool(useNewMembers=False)
         self.slavePool.setName("Slave Pool")
@@ -88,7 +92,7 @@ class BuildMaster(service.MultiService):
         if openConfigFile_for_tests:
             f = openConfigFile_for_tests
         else:
-            configFile = os.path.join(self.masterdir, 'config.py')
+            configFile = os.path.join(self.masterdir, self.configFile)
 
             log.msg("loading configuration from '%s'" % configFile)
 
