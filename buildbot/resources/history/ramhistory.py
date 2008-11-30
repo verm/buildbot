@@ -35,6 +35,7 @@ class HistoryElt(object):
 
     def __init__(self, historyEltIdPath):
         self.historyEltIdPath = historyEltIdPath
+        self.childEltsKeys = []
         self.childElts = {}
 
     def getParentElt(self):
@@ -44,7 +45,7 @@ class HistoryElt(object):
         return self.childElts[key]
 
     def getChildEltKeys(self):
-        return self.childElts.keys()
+        return self.childEltsKeys
 
     def getHistoryEltIdPath(self):
         return self.historyEltIdPath
@@ -53,6 +54,7 @@ class HistoryElt(object):
         if self.childElts.has_key(key):
             raise KeyError, "%s already has a child named '%s'" % (self, key)
         n = BuildHistory(self.historyEltIdPath + (key,))
+        self.childEltsKeys.append(key)
         self.childElts[key] = n
         return n
 
@@ -60,6 +62,7 @@ class HistoryElt(object):
         if self.childElts.has_key(key):
             raise KeyError, "%s already has a child named '%s'" % (self, key)
         n = StepHistory(self.historyEltIdPath + (key,))
+        self.childEltsKeys.append(key)
         self.childElts[key] = n
         return n
 
