@@ -7,18 +7,17 @@ from buildbot import uthreads
 
 class DummyScheduler(scheduler.Scheduler):
     """
-    A Scheduler that triggers a build for each change to the repository.
+    A Scheduler that triggers a build after 1 second
     """
     implements(interfaces.IScheduler)
 
-    def __init__(self, name, action, *args, **kwargs):
+    def __init__(self, name, action, context):
         """
         @param name: name of this scheduler
         """
-        scheduler.Scheduler.__init__(self, name)
+        scheduler.Scheduler.__init__(self, name=name)
         self.action = action
-        self.args = args
-        self.kwargs = kwargs
+        self.context = context
 
         self.timer = None
 
@@ -32,4 +31,4 @@ class DummyScheduler(scheduler.Scheduler):
 
     def doBuild(self):
         self.timer = None
-        uthreads.spawn(self.action(*self.args, **self.kwargs))
+        self.doStartAction(self.action, self.context)

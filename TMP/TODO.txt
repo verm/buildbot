@@ -1,11 +1,2 @@
-Write classes and interfaces to represent the history of a build; something
-like
- Project
-   Step
-   Step
-     [Step
-       [Step]]
-         Log
-         Log
-
-and where some steps are tagged as "builds" for display purposes
+invent a name for these build functions
+ - take a "context" as the first argument
