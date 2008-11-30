@@ -20,18 +20,15 @@ project = history.getProject("stuffproj", create=True)
 #        interval=1,
 #    ))
 
-@newStep("say-hi")
-def dosayhi(context):
-    print "hi"
-
-@newStep("say-hey")
-def dosayhey(context):
-    print "hey"
+@newStep("say")
+def say(context, what):
+    print "SAY:", what
 
 @newBuild("dostuff")
 def dostuff(context):
-    yield dosayhi(context)
-    yield dosayhey(context)
+    yield say(context, "hello")
+    yield say(context, "cruel")
+    yield say(context, "world")
 
     print "history:"
     yield print_histelt(project)
