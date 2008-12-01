@@ -68,8 +68,10 @@ class IScheduler(Interface):
     SourceManager, or by some kind of timer, or some other means.
 
     A scheduler's constructor should take, among other arguments:
-     - action -- the function to call to start a build
-     - context -- the context to pass to that function
+     - name - scheduler name
+     - action -- the function to call to start a build, and
+     - project or context -- the context to pass to that function -- either an
+       IProjectHistory provider or an IContext object.
     
     L{buildbot.framework.scheduler} provides convenient methods to
     implement a scheduler.
@@ -94,6 +96,24 @@ class ICommand(Interface):
     # TODO temporary
     def run():
         """Do the thing; a microthreaded function"""
+
+## Processing
+
+class IContext(Interface):
+    """
+    A context object conveniently (and extensibly) encapsulates the current
+    state of processing.
+    """
+
+    hist = Attribute("""Current L{IHistoryElt} provider""")
+
+    # TODO:
+    # slave = Attribute("""Current default slave on which to run commands""")
+    # props = Attribute("""Accumulated properties for this build""")
+
+    def newSubcontext(subhistory):
+        """Create a shallow copy of this context object for use in a sub-step
+        or sub-build."""
 
 ## History
 #

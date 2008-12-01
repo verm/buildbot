@@ -42,7 +42,7 @@ def print_histelt(elt, indent=0):
 sched = addScheduler(
     DummyScheduler(
         name="buildit",
-        context=project,
+        project=project,
         action=dostuff
     ))
 
