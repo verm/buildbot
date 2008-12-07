@@ -67,10 +67,30 @@ write natural-looking python functions that execute in the Twisted
 
 == Schedulers ==
 
-Schedulers interface with SourceManagers to initiate builds.  Builds are
-represented as microthreaded functions.
+Schedulers interface with SourceManagers to initiate builds.  See "Build
+Process", below, for details on the build functions.
 
 == History ==
 
 The history of builds within a buildmaster is stored in a hierarchy of
 IHistoryElt objects, which are created naturally as a build progresses.
+
+== Build Process ==
+
+Builds are executed as Python functions, which means that they have a lot more
+flexibility in their structure than Buildbot-0.x builds.  A build can be as
+simple as a single function which executes a few steps in sequence, but can
+also employ conditionals and loops, produce nested steps and other builds, run
+several actions in parallel, and more.  The distinction between builds and
+steps is largely left to the user, but in general a build operates on a single
+machine and produces an overall result that the user will be interested in,
+while a step is a smaller action that is coordinated with other steps to
+produce a build.
+
+Functions which are to be used in a build are all microthreaded, and all take
+an IContext object as their first argument.  This object encapsulates the
+context of the particular build process.
+
+buildbot.framework.process defines some decorators that are useful to indicate
+that execution of a particular build function represents a new build or a new
+step.

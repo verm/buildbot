@@ -102,7 +102,7 @@ class ICommand(Interface):
 class IContext(Interface):
     """
     A context object conveniently (and extensibly) encapsulates the current
-    state of processing.
+    state of processing of a particular build.
     """
 
     hist = Attribute("""Current L{IHistoryElt} provider""")
@@ -113,7 +113,7 @@ class IContext(Interface):
 
     def newSubcontext(subhistory):
         """Create a shallow copy of this context object for use in a sub-step
-        or sub-build."""
+        or sub-build, with the given history attribute."""
 
 ## History
 #
