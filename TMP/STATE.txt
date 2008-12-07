@@ -28,6 +28,11 @@ buildbot.config, and this module's symbols are then made available to the
 Python code in the config file, eliminating the need to import symbols in the
 configuration file.
 
+== buildbot.buildmaster ==
+
+There is only one buildmaster in a twistd process, and it is available at
+buildbot.buildmaster.
+
 == Config Reloading and ServicePools ==
 
 Effective reloading of configuration files is supported through ServicePools.

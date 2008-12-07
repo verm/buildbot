@@ -38,6 +38,10 @@ class BuildMaster(service.MultiService):
 
     def __init__(self, masterdir, configFile):
         service.MultiService.__init__(self)
+
+        assert buildbot.buildmaster is None, "only one BuildMaster is allowed per process"
+        buildbot.buildmaster = self
+
         self.setName("buildmaster")
         self.masterdir = masterdir
         self.configFile = configFile
@@ -110,7 +114,6 @@ class BuildMaster(service.MultiService):
         def addSlave(sl):
             assert interfaces.ISlave.providedBy(sl), \
                 "%s is not an ISlave" % sl
-            sl.buildmaster = self
             new_slaves.append(sl)
             return sl
         localDict['addSlave'] = addSlave
@@ -119,7 +122,6 @@ class BuildMaster(service.MultiService):
         def addSourceManager(srcmgr):
             assert interfaces.ISourceManager.providedBy(srcmgr), \
                 "%s is not an ISourceManager" % srcmgr
-            srcmgr.buildmaster = self
             new_srcmgrs.append(srcmgr)
             return srcmgr
         localDict['addSourceManager'] = addSourceManager
@@ -128,7 +130,6 @@ class BuildMaster(service.MultiService):
         def addScheduler(sched):
             assert interfaces.IScheduler.providedBy(sched), \
                 "%s is not an IScheduler" % sched
-            sched.buildmaster = self
             new_scheds.append(sched)
             return sched
         localDict['addScheduler'] = addScheduler
