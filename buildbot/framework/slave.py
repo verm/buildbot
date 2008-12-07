@@ -14,8 +14,6 @@ class Slave(pools.PoolMember):
     configurations.  More complex configurations may require a
     subclass.
 
-    @ivar buildmaster: the buildmaster object; set by the buildmaster
-    when the Scheduler is added; available after startService.
     @ivar password: the password the remote machine will use when contacting
     the buildmaster
     """

@@ -9,9 +9,6 @@ class SourceManager(pools.PoolMember):
     Parent class for all source managers.  See 
     L{buildbot.framework.interfaces.ISourceManager} for requirements
     for subclasses.
-
-    @ivar buildmaster: the buildmaster object; set by the buildmaster
-    when the SourceManager is added.
     """
     def __init__(self, name):
         pools.PoolMember.__init__(self, name)
