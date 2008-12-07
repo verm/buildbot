@@ -1,0 +1,71 @@
+The current state of Buildbot-1.0
+---------------------------------
+
+== Prerequisites ==
+
+Since Python-2.6 and Python-3.0 are now available, Buildbot-1.0 requires at
+least Python-2.5.  This allows the use of microthreading, described below
+(uthreads).
+
+== General Layout ==
+
+The Buildbot distribution is divided into two major components: the buildbot
+framework, which manages the configuration file, network communications, and
+providing connections for all of the various pieces of a build process; and a
+collection of resources that actually do interesting things.  The framework is
+contained in the buildbot.framework package, and its objects implement with
+the interfaces in buildbot.framework.interfaces.  Resources are available in
+buildbot.resources, separated by type (e.g., buildbot.resources.schedulers).
+
+Note that lots of code from Buildbot-0.* remains in the repository.  This will
+not be removed until it is necessary, as much of it will be useful in
+Buildbot-1.0.
+
+== buildbot.config ==
+
+All symbols that might be useful in a configuration file are imported into
+buildbot.config, and this module's symbols are then made available to the
+Python code in the config file, eliminating the need to import symbols in the
+configuration file.
+
+== Config Reloading and ServicePools ==
+
+Effective reloading of configuration files is supported through ServicePools.
+Most top-level Buildbot objects are implemented as PoolMembers, and can be
+updgraded or replaced smoothly when the configuration is reloaded.
+
+== Subscriptions ==
+
+Objects in Buildbot often have a need to be notified of changes in another
+object.  Buidlbot.framework.subscriptions implements a simple subscription
+system to avoid repeatedly implementing this simple pattern.
+
+== SourceManagers ==
+
+The beginnings of support for handling source code are in place.  A
+SourceManager is responsible for dealing with source code: monitoring for
+changes in a respository, producing and interpreting opaque SourceStamps
+(which represent a particular copy of the source code), and providing
+functions to check out source on slaves.
+
+SourceManagers can also perform more advanced operations on SourceStamps, such
+as calculating the "previous" SourceStamp or listing changes or creating a
+blamelist between two SourceStamps.
+
+== Microthreading ==
+
+Microthreads, implemented by the buildbot.uthreads package, provide a way to
+write natural-looking python functions that execute in the Twisted
+(asynchronous) environment.  For documentation, see
+
+  http://code.google.com/p/uthreads/source/browse/trunk/doc/python-microthreading.txt
+
+== Schedulers ==
+
+Schedulers interface with SourceManagers to initiate builds.  Builds are
+represented as microthreaded functions.
+
+== History ==
+
+The history of builds within a buildmaster is stored in a hierarchy of
+IHistoryElt objects, which are created naturally as a build progresses.
