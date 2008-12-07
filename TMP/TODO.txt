@@ -7,8 +7,3 @@ Find some way (git submodules?) to sync the copy in buildbot with the copy at
 google code
 
 Add documentation beyond the PEP proposal
-
-= build functions =
-
-invent a signature for the various build functions
- - take a "context" as the first argument

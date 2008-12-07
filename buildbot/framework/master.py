@@ -12,7 +12,8 @@ from twisted.internet import defer, reactor
 from twisted.application import service
 
 from buildbot.framework import pools, exceptions, interfaces
-from buildbot import config
+import buildbot
+import buildbot.config
 
 from buildbot import uthreads
 
@@ -31,6 +32,9 @@ class BuildMaster(service.MultiService):
 
     @ivar schedulerPool: pool of schedulers
     @type schedulerPool: L{buildbot.framework.pools.ServicePool}
+
+    @ivar historyPool: pool of history managers
+    @type historyPool: L{buildbot.framework.pools.ServicePool}
 
     @ivar masterdir: root directory for the buildmaster
     @type masterdir: string
@@ -57,6 +61,12 @@ class BuildMaster(service.MultiService):
         self.schedulerPool = pools.ServicePool(useNewMembers=True)
         self.schedulerPool.setName("Scheduler Pool")
         self.schedulerPool.setServiceParent(self)
+
+        self.historyPool = pools.ServicePool(useNewMembers=True)
+        self.historyPool.setName("History Pool")
+        self.historyPool.setServiceParent(self)
+
+        self.defaultHistoryManager = None
 
     def startService(self):
         service.MultiService.startService(self)
@@ -104,7 +114,7 @@ class BuildMaster(service.MultiService):
 
         # create a dictionary from buildbot.config's namespace, omitting private
         # names beginning with a '_'
-        localDict = dict((k,v) for (k,v) in config.__dict__.iteritems() if k[0] != '_')
+        localDict = dict((k,v) for (k,v) in buildbot.config.__dict__.iteritems() if k[0] != '_')
 
         # add a few variables of our own
         localDict['masterdir'] = self.masterdir
@@ -134,6 +144,14 @@ class BuildMaster(service.MultiService):
             return sched
         localDict['addScheduler'] = addScheduler
 
+        new_histmgrs = []
+        def addHistoryManager(histmgr):
+            assert interfaces.IHistoryManager.providedBy(histmgr), \
+                "%s is not an IHistoryManager" % histmgr
+            new_histmgrs.append(histmgr)
+            return histmgr
+        localDict['addHistoryManager'] = addHistoryManager
+
         try:
             exec f in localDict
         except:
@@ -159,3 +177,9 @@ class BuildMaster(service.MultiService):
         for sched in new_scheds:
             yield self.schedulerPool.addMember(sched)
         self.schedulerPool.removeOld()
+
+        log.msg("updating history managers")
+        self.historyPool.markOld()
+        for histmgr in new_histmgrs:
+            yield self.historyPool.addMember(histmgr)
+        self.historyPool.removeOld()

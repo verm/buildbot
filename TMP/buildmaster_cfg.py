@@ -7,9 +7,12 @@ from buildbot.resources.schedulers.dummysched import DummyScheduler
 from buildbot.resources.history.ramhistory import RamHistoryManager
 from buildbot.framework.process import newStep, newBuild
 
-# TODO: addHistoryManager
+# create a history manager to store build history
+history = addHistoryManager(
+    RamHistoryManager()
+    )
 
-history = RamHistoryManager()
+# and a project
 project = history.getProject("stuffproj", create=True)
 
 #srcmgr = addSourceManager(

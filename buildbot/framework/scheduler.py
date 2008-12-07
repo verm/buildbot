@@ -10,16 +10,11 @@ class Scheduler(pools.PoolMember):
     L{buildbot.framework.interfaces.IScheduler} for requirements
     for subclasses.
     """
-    def __init__(self, name, action, project=None, context=None):
-        assert (project or context) and not (project and context), \
-                "you must provide either a project or a context"
+    def __init__(self, name, action, project=None):
         pools.PoolMember.__init__(self, name)
 
         self.action = action
-        if project:
-            self.context = process.Context(interfaces.IHistoryElt(project))
-        else:
-            self.context = context
+        self.project = project
 
     ##
     # Convenience methods for child methods
@@ -34,6 +29,7 @@ class Scheduler(pools.PoolMember):
         The L{context} object should refer to an IHistoryElt provider, but will
         be adapted just in case.
         """
+        context = process.Context(interfaces.IHistoryElt(self.project))
         def callAction():
-            yield self.action(self.context)
+            yield self.action(context)
         uthreads.spawn(callAction())

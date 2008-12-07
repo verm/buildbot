@@ -1,10 +1,10 @@
 from zope.interface import implements
 from twisted.python import log, components
 from twisted.internet import defer, reactor
-from buildbot.framework import interfaces
+from buildbot.framework import interfaces, history
 from buildbot import uthreads
 
-class RamHistoryManager(object):
+class RamHistoryManager(history.HistoryManager):
     """
     History manager that simply stores all history in RAM.  The history is not
     saved between runs of the buildmaster, and may consume arbitrary amounts of
@@ -13,7 +13,7 @@ class RamHistoryManager(object):
 
     implements(interfaces.IHistoryManager)
 
-    def __init__(self):
+    def __init__(self, name="history"):
         self.projects = {}
 
     def getElementByIdPath(self, path):
