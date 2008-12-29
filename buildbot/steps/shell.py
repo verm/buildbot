@@ -135,17 +135,20 @@ class ShellCommand(LoggingBuildStep):
         return ["'%s" % words[0], "%s" % words[1], "...'"]
 
     def setupEnvironment(self, cmd):
-        # XXX is this used? documented? replaced by properties?
-        # merge in anything from Build.slaveEnvironment . Earlier steps
-        # (perhaps ones which compile libraries or sub-projects that need to
-        # be referenced by later steps) can add keys to
-        # self.build.slaveEnvironment to affect later steps.
+        # merge in anything from Build.slaveEnvironment
+        # This can be set from a Builder-level environment, or from earlier
+        # BuildSteps. The latter method is deprecated and superceded by
+        # BuildProperties.
+        # Environment variables passed in by a BuildStep override
+        # those passed in at the Builder level.
         properties = self.build.getProperties()
         slaveEnv = self.build.slaveEnvironment
         if slaveEnv:
             if cmd.args['env'] is None:
                 cmd.args['env'] = {}
-            cmd.args['env'].update(properties.render(slaveEnv))
+            fullSlaveEnv = slaveEnv.copy()
+            fullSlaveEnv.update(cmd.args['env'])
+            cmd.args['env'] = properties.render(fullSlaveEnv)
             # note that each RemoteShellCommand gets its own copy of the
             # dictionary, so we shouldn't be affecting anyone but ourselves.
 
@@ -410,38 +413,69 @@ class PerlModuleTest(Test):
     total = 0
 
     def evaluateCommand(self, cmd):
-        lines = self.getLog('stdio').readlines()
+        # Get stdio, stripping pesky newlines etc.
+        lines = map(
+            lambda line : line.replace('\r\n','').replace('\r','').replace('\n',''),
+            self.getLog('stdio').readlines()
+            )
 
-        re_test_result = re.compile("^(All tests successful)|(\d+)/(\d+) subtests failed|Files=\d+, Tests=(\d+),")
+        total = 0
+        passed = 0
+        failed = 0
+        rc = cmd.rc
 
-        mos = map(lambda line: re_test_result.search(line), lines)
-        test_result_lines = [mo.groups() for mo in mos if mo]
+        # New version of Test::Harness?
+        try:
+            test_summary_report_index = lines.index("Test Summary Report")
 
-        if not test_result_lines:
-            return cmd.rc
+            del lines[0:test_summary_report_index + 2]
 
-        test_result_line = test_result_lines[0]
+            re_test_result = re.compile("^Result: (PASS|FAIL)$|Tests: \d+ Failed: (\d+)\)|Files=\d+, Tests=(\d+)")
 
-        success = test_result_line[0]
+            mos = map(lambda line: re_test_result.search(line), lines)
+            test_result_lines = [mo.groups() for mo in mos if mo]
 
-        if success:
-            failed = 0
+            for line in test_result_lines:
+                if line[0] == 'PASS':
+                    rc = SUCCESS
+                elif line[0] == 'FAIL':
+                    rc = FAILURE
+                elif line[1]:
+                    failed += int(line[1])
+                elif line[2]:
+                    total = int(line[2])
 
-            test_totals_line = test_result_lines[1]
-            total_str = test_totals_line[3]
+        except ValueError: # Nope, it's the old version
+            re_test_result = re.compile("^(All tests successful)|(\d+)/(\d+) subtests failed|Files=\d+, Tests=(\d+),")
 
-            rc = SUCCESS
-        else:
-            failed_str = test_result_line[1]
-            failed = int(failed_str)
+            mos = map(lambda line: re_test_result.search(line), lines)
+            test_result_lines = [mo.groups() for mo in mos if mo]
 
-            total_str = test_result_line[2]
+            if test_result_lines:
+                test_result_line = test_result_lines[0]
 
-            rc = FAILURE
+                success = test_result_line[0]
 
-        total = int(total_str)
-        passed = total - failed
+                if success:
+                    failed = 0
 
-        self.setTestResults(total=total, failed=failed, passed=passed)
+                    test_totals_line = test_result_lines[1]
+                    total_str = test_totals_line[3]
+                    
+                    rc = SUCCESS
+                else:
+                    failed_str = test_result_line[1]
+                    failed = int(failed_str)
+
+                    total_str = test_result_line[2]
+
+                    rc = FAILURE
+
+                total = int(total_str)
+
+        if total:
+            passed = total - failed
+
+            self.setTestResults(total=total, failed=failed, passed=passed)
 
         return rc

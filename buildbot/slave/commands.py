@@ -224,6 +224,14 @@ class ShellCommand:
     KILL = "KILL"
     CHUNK_LIMIT = 128*1024
 
+    # For sending elapsed time:
+    startTime = None
+    elapsedTime = None
+    # I wish we had easy access to CLOCK_MONOTONIC in Python:
+    # http://www.opengroup.org/onlinepubs/000095399/functions/clock_getres.html
+    # Then changes to the system clock during a run wouldn't effect the "elapsed
+    # time" results.
+
     def __init__(self, builder, command,
                  workdir, environ=None,
                  sendStdout=True, sendStderr=True, sendRC=True,
@@ -342,6 +350,10 @@ class ShellCommand:
             else:
                 argv = self.command
 
+        # $PWD usually indicates the current directory; spawnProcess may not
+        # update this value, though, so we set it explicitly here.
+        self.environ['PWD'] = os.path.abspath(self.workdir)
+
         # self.stdin is handled in ShellCommandPP.connectionMade
 
         # first header line is the command in plain text, argv joined with
@@ -409,6 +421,7 @@ class ShellCommand:
         # called right after we return, but somehow before connectionMade
         # were called, then kill() would blow up).
         self.process = None
+        self.startTime = time.time()
         p = reactor.spawnProcess(self.pp, argv[0], argv,
                                  self.environ,
                                  self.workdir,
@@ -462,7 +475,8 @@ class ShellCommand:
             self.timer.reset(self.timeout)
 
     def finished(self, sig, rc):
-        log.msg("command finished with signal %s, exit code %s" % (sig,rc))
+        self.elapsedTime = time.time() - self.startTime
+        log.msg("command finished with signal %s, exit code %s, elapsedTime: %0.6f" % (sig,rc,self.elapsedTime))
         for w in self.logFileWatchers:
              # this will send the final updates
             w.stop()
@@ -473,6 +487,7 @@ class ShellCommand:
                 self.sendStatus(
                     {'header': "process killed by signal %d\n" % sig})
             self.sendStatus({'rc': rc})
+        self.sendStatus({'header': "elapsedTime=%0.6f\n" % self.elapsedTime})
         if self.timer:
             self.timer.cancel()
             self.timer = None
@@ -2218,18 +2233,12 @@ class Mercurial(SourceBase):
         if os.path.exists(os.path.join(self.builder.basedir,
                                        self.srcdir, ".buildbot-patched")):
             return False
-        # like Darcs, to check out a specific (old) revision, we have to do a
-        # full checkout. TODO: I think 'hg pull' plus 'hg update' might work
-        if self.revision:
-            return False
         return os.path.isdir(os.path.join(self.builder.basedir,
                                           self.srcdir, ".hg"))
 
     def doVCUpdate(self):
         d = os.path.join(self.builder.basedir, self.srcdir)
-        command = [self.vcexe, 'pull', '--update', '--verbose']
-        if self.args['revision']:
-            command.extend(['--rev', self.args['revision']])
+        command = [self.vcexe, 'pull', '--verbose']
         c = ShellCommand(self.builder, command, d,
                          sendRC=False, timeout=self.timeout,
                          keepStdout=True)
@@ -2239,76 +2248,57 @@ class Mercurial(SourceBase):
         return d
 
     def _handleEmptyUpdate(self, res):
+        if res == 0:
+            return self._doUpdate()
+
         if type(res) is int and res == 1:
             if self.command.stdout.find("no changes found") != -1:
                 # 'hg pull', when it doesn't have anything to do, exits with
                 # rc=1, and there appears to be no way to shut this off. It
                 # emits a distinctive message to stdout, though. So catch
                 # this and pretend that it completed successfully.
-                return 0
+                return self._doUpdate()
         return res
 
+    def _doUpdate(self):
+        dir = os.path.join(self.builder.basedir, self.srcdir)
+        # When cloning a tree without a specified revision, you get the tip
+        # of the default branch. Do the same thing when updating without
+        # a specified revision.
+        if self.args.has_key('revision'):
+            rev = self.args['revision']
+        else:
+            rev = 'default'
+        command = [self.vcexe, 'update', '-C', '--rev', rev]
+        c = ShellCommand(self.builder, command, dir,
+                         sendRC=False, timeout=self.timeout,
+                         keepStdout=True)
+        return c.start()
+
     def doVCFull(self):
-        newdir = os.path.join(self.builder.basedir, self.srcdir)
-        command = [self.vcexe, 'clone']
-        if self.args['revision']:
-            command.extend(['--rev', self.args['revision']])
-        command.extend([self.repourl, newdir])
-        c = ShellCommand(self.builder, command, self.builder.basedir,
-                         sendRC=False, keepStdout=True, keepStderr=True,
-                         timeout=self.timeout)
-        self.command = c
-        d = c.start()
-        d.addCallback(self._maybeFallback, c)
-        return d
-
-    def _maybeFallback(self, res, c):
-        # to do 'hg clone -r REV' (i.e. to check out a specific revision)
-        # from a remote (HTTP) repository, both the client and the server
-        # need to be hg-0.9.2 or newer. If this caused a checkout failure, we
-        # fall back to doing a checkout of HEAD (spelled 'tip' in hg
-        # parlance) and then 'hg update' *backwards* to the desired revision.
-        if res == 0:
-            return res
-
-        errmsgs = [
-            # hg-0.6 didn't even have the 'clone' command
-            # hg-0.7
-            "hg clone: option --rev not recognized",
-            # hg-0.8, 0.8.1, 0.9
-            "abort: clone -r not supported yet for remote repositories.",
-            # hg-0.9.1
-            ("abort: clone by revision not supported yet for "
-             "remote repositories"),
-            # hg-0.9.2 and later say this when the other end is too old
-            ("abort: src repository does not support revision lookup "
-             "and so doesn't support clone by revision"),
-            ]
-
-        fallback_is_useful = False
-        for errmsg in errmsgs:
-            # the error message might be in stdout if we're using PTYs, which
-            # merge stdout and stderr.
-            if errmsg in c.stdout or errmsg in c.stderr:
-                fallback_is_useful = True
-                break
-        if not fallback_is_useful:
-            return res # must be some other error
-
-        # ok, do the fallback
-        newdir = os.path.join(self.builder.basedir, self.srcdir)
-        command = [self.vcexe, 'clone']
-        command.extend([self.repourl, newdir])
+        d = os.path.join(self.builder.basedir, self.srcdir)
+        command = [self.vcexe, 'clone', '-U']
+        command.extend([self.repourl, d])
         c = ShellCommand(self.builder, command, self.builder.basedir,
                          sendRC=False, timeout=self.timeout)
         self.command = c
-        d = c.start()
-        d.addCallback(self._abandonOnFailure)
-        d.addCallback(self._updateToDesiredRevision)
-        return d
+        cmd1 = c.start()
+
+        def _update(res):
+            updatecmd=[self.vcexe, 'update', '--repository', d]
+            if self.args.get('revision'):
+                updatecmd.extend(['--rev', self.args['revision']])
+            else:
+                updatecmd.extend(['--rev', self.args.get('branch',  'default')])
+            self.command = ShellCommand(self.builder, updatecmd,
+                self.builder.basedir, sendRC=False, timeout=self.timeout)
+            return self.command.start()
+
+        cmd1.addCallback(_update)
+        return cmd1
 
     def _updateToDesiredRevision(self, res):
-        assert self.args['revision']
+        assert self.args.get('revision')
         newdir = os.path.join(self.builder.basedir, self.srcdir)
         # hg-0.9.1 and earlier (which need this fallback) also want to see
         # 'hg update REV' instead of 'hg update --rev REV'. Note that this is
