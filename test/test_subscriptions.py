@@ -1,10 +1,10 @@
 import os, time
 from buildbot import uthreads
-from twisted.trial import unittest
+from test.base import TestCase
 from twisted.internet import defer, reactor
 from buildbot.framework import subscriptions
 
-class t(unittest.TestCase):
+class t(TestCase):
     @uthreads.uthreaded
     def testSubscription(self):
         """

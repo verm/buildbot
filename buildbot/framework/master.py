@@ -102,9 +102,9 @@ class BuildMaster(service.MultiService):
         service.MultiService.stopService(self)
 
     @uthreads.uthreaded
-    def loadConfig(self, openConfigFile_for_tests=None):
-        if openConfigFile_for_tests:
-            f = openConfigFile_for_tests
+    def loadConfig(self, configFileForTests=None):
+        if configFileForTests:
+            f = configFileForTests
         else:
             configFile = os.path.join(self.masterdir, self.configFile)
 

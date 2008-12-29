@@ -4,6 +4,7 @@ from twisted.trial import unittest
 from twisted.application import service
 from twisted.internet import defer, reactor
 from buildbot.framework import master
+from test.base import TestCase
 import StringIO
 
 stubclasses = """
@@ -26,27 +27,28 @@ class MyScheduler(Scheduler):
 add_one_of_each = """
 addSourceManager(MySourceManager('sm'))
 addSlave(MySlave('sl', 'pass'))
-addScheduler(MyScheduler('sch'))
+addScheduler(MyScheduler('sch', lambda stuff : None))
 """
 
 just_sourcemgr = """
 addSourceManager(MySourceManager('sm2'))
 """
 
-class config(unittest.TestCase):
+class config(TestCase):
     def configToFile(conf):
         return StringIO.StringIO(conf)
 
     @uthreads.uthreaded
     def testLoadConfig(self):
-        bm = master.BuildMaster(".")
+        bm = master.BuildMaster(".", "cfg.py")
         yield bm.loadConfig(stubclasses + add_one_of_each)
         assert len(bm.slavePool) == 1
         assert len(bm.sourceManagerPool) == 1
         assert len(bm.schedulerPool) == 1
 
+    @uthreads.uthreaded
     def testReloadConfig(self):
-        bm = master.BuildMaster(".")
+        bm = master.BuildMaster(".", "cfg.py")
         yield bm.loadConfig(stubclasses + add_one_of_each)
         assert len(bm.slavePool) == 1
         assert len(bm.sourceManagerPool) == 1

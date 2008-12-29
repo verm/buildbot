@@ -8,7 +8,7 @@ import sys
 import time
 import thread
 from twisted.internet import defer
-from twisted.trial import unittest
+from test.base import TestCase
 
 from buildbot import uthreads
 from buildbot.uthreads import *
@@ -27,7 +27,7 @@ def uthreaded_test(*args, **kwargs):
         return wraptest
     return decorator
 
-class core(unittest.TestCase):
+class core(TestCase):
     def test_main(self):
         mutable = []
         def main():
@@ -74,9 +74,12 @@ class core(unittest.TestCase):
 
     @uthreaded_test()
     def test_current_thread(self):
+        th = None
         def other_thread():
+            # wait until th is set, the hard way
+            while th is None:
+                yield
             assert current_thread() is th
-            yield # make it a generator
         th = spawn(other_thread())
 
     @uthreaded_test()
@@ -234,7 +237,7 @@ class core(unittest.TestCase):
             raise StopIteration((yield fib(n-1)) + (yield fib(n-2)))
         assert (yield fib(6)) == 13
 
-class sync(unittest.TestCase):
+class sync(TestCase):
     @uthreaded_test()
     def test_Lock(self):
         l = Lock()
@@ -333,7 +336,7 @@ class sync(unittest.TestCase):
         q = Queue()
         self.assertRaises(Empty, q.get_nowait)
 
-class timer(unittest.TestCase):
+class timer(TestCase):
     @uthreaded_test()
     def test_Timer(self):
         mutable = []

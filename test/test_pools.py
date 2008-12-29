@@ -1,6 +1,6 @@
 import os, time
 from buildbot import uthreads
-from twisted.trial import unittest
+from test.base import TestCase
 from twisted.application import service
 from twisted.internet import defer, reactor
 from buildbot.framework import pools
@@ -20,7 +20,7 @@ class FakePoolMember(pools.PoolMember):
     def emulateNewMember(self, new):
         self.attr = new.attr
 
-class replacement(unittest.TestCase):
+class replacement(TestCase):
     def setUp(self):
         self.pool = None
 

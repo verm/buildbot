@@ -1,10 +1,10 @@
 import os, shutil
-from twisted.trial import unittest
+from test.base import TestCase
 from twisted.internet import reactor, defer
 from twisted.python import log
 from buildbot.jobs.impl.local import LocalRemoteSystem
 
-class testImplLocal(unittest.TestCase):
+class testImplLocal(TestCase):
     def setUp(self):
         self.workdir = os.path.abspath("trial-jobs")
         if os.path.exists(self.workdir):
