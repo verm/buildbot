@@ -1,9 +1,0 @@
-This list is not nearly complete -- it's things I've thought about but haven't
-done yet.
-
-= uthreads =
-
-Find some way (git submodules?) to sync the copy in buildbot with the copy at
-google code
-
-Add documentation beyond the PEP proposal
