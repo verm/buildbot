@@ -14,6 +14,6 @@ is loaded:
 
 # Every user-visible class or function should be imported here.
 
-from buildbot.framework.process import newStep, newBuild
+from buildbot.framework.process import buildStep, spawnsBuild
 from buildbot.resources.history.ramhistory import RamHistoryManager
 from buildbot.resources.schedulers.dummysched import DummyScheduler

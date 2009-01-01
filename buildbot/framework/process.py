@@ -4,42 +4,64 @@ from twisted.internet import defer, reactor
 from buildbot.framework import interfaces
 from buildbot import uthreads
 
+class ProcessThread(uthreads.uThread):
+    """
+    A uThread with extra attributes used to track the status of build processing.
+    
+    @ivar hist: the current L{IHistoryElement}
+    @type hist: L{IHistoryElement} provider
+    """
+    __slots__ = ( 'hist' )
+
+    def __init__(self, hist, *args, **kwargs):
+        uthreads.uThread.__init__(self, *args, **kwargs)
+        self.hist = hist
+
 ##
 # Useful decorators for process functions
 
-def newBuild(buildName):
+def spawnsBuild(buildName):
     """
-    Decorate a build function to create a new IBuildHistory context when
+    Decorate a build function to create a new IBuildHistory when
     called.  Used like this::
-      @newBuild("make-dist")
-      def make_dist(context):
+      @spawnsBuild("archtest")
+      def archtest():
           # ...
     """
     def d(fn):
-        def w(context, *args, **kwargs):
-            unique = yield _uniquifyName(buildName, context.hist)
-            context = context.newSubcontext(
-                subhistory=(yield context.hist.newBuild(unique)))
-            yield fn(context, *args, **kwargs)
-        return w
+        def spawnBuild(*args, **kwargs):
+            pth = uthreads.current_thread()
+            unique = yield _uniquifyName(buildName, pth.hist)
+            subhistory = (yield pth.hist.newBuild(unique))
+            subth = ProcessThread(pth.hist, fn, args, kwargs)
+            subth.start()
+            raise StopIteration(subth)
+        return spawnBuild
     return d
 
-def newStep(stepName):
+def buildStep(stepName):
     """
-    Decorate a build function to create a new IStepHistory context when
-    called.
+    Decorate a build function to create a new IStepHistory when called.
     """
     def d(fn):
-        def w(context, *args, **kwargs):
-            unique = yield _uniquifyName(stepName, context.hist)
-            context = context.newSubcontext(
-                subhistory=(yield context.hist.newStep(unique)))
-            yield fn(context, *args, **kwargs)
-        return w
+        def wrapBuildStep(*args, **kwargs):
+            pth = uthreads.current_thread()
+            unique = yield _uniquifyName(stepName, pth.hist)
+
+            oldhist = pth.hist
+            pth.hist = (yield pth.hist.newStep(unique))
+            try:
+                yield fn(*args, **kwargs)
+            finally:
+                pth.hist = oldhist
+        return wrapBuildStep
     return d
 
+##
+# Utility functions
+
 def _uniquifyName(name, hist):
-    """Generate a unqiue name for a child of context by appending a dash and a
+    """Generate a unqiue name for a child of hist by appending a dash and a
     number."""
     kidNames = yield hist.getChildEltKeys()
     if name not in kidNames:
@@ -51,11 +73,3 @@ def _uniquifyName(name, hist):
             raise StopIteration(namenum)
         i += 1
 
-class Context(object):
-    implements(interfaces.IContext)
-
-    def __init__(self, historyelt):
-        self.hist = historyelt
-
-    def newSubcontext(self, subhistory):
-        return Context(historyelt=subhistory)

@@ -299,7 +299,6 @@ class uThread(object):
                 sleep_d.addCallbacks(nextstep_cb, nextstep_eb)
                 break
 
-# TODO: is this needed?
 global _current_thread
 def current_thread():
     return _current_thread

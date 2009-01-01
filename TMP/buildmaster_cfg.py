@@ -5,7 +5,6 @@ import re
 from buildbot import uthreads
 from buildbot.resources.schedulers.dummysched import DummyScheduler
 from buildbot.resources.history.ramhistory import RamHistoryManager
-from buildbot.framework.process import newStep, newBuild
 
 # create a history manager to store build history
 history = addHistoryManager(
@@ -23,15 +22,22 @@ project = history.getProject("stuffproj", create=True)
 #        interval=1,
 #    ))
 
-@newStep("say")
-def say(context, what):
+@buildStep("say")
+def say(what):
     print "SAY:", what
 
-@newBuild("dostuff")
-def dostuff(context):
-    yield say(context, "hello")
-    yield say(context, "cruel")
-    yield say(context, "world")
+@buildStep("complex_say")
+def complex_say(what):
+    print "preparing.."
+    yield say(what)
+    yield say(what + "!!")
+    print "cleaning up.."
+
+@spawnsBuild("dostuff")
+def dostuff():
+    yield say("hello")
+    yield complex_say("cruel")
+    yield say("world")
 
     print "history:"
     yield print_histelt(project)

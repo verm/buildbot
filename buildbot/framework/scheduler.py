@@ -21,15 +21,20 @@ class Scheduler(pools.PoolMember):
 
     def doStartAction(self):
         """
-        Start the scheduler's action by calling action(context).  This
-        call is spawned in a separate uThread, so the doStartAction call itself
-        will not raise an exception.  The uThread is returned, so the scheduler
-        can wait for or otherwise monitor it for results.
-
-        The L{context} object should refer to an IHistoryElt provider, but will
-        be adapted just in case.
+        Start the scheduler's action by calling action().  This call is spawned
+        in a separate uThread, so the doStartAction call itself will not raise
+        an exception.  The uThread is returned, so the scheduler can wait for
+        or otherwise monitor it for results.
         """
-        context = process.Context(interfaces.IHistoryElt(self.project))
-        def callAction():
-            yield self.action(context)
-        uthreads.spawn(callAction())
+        def runAction():
+            x = (yield self.action())
+            # if action() just triggered a build, then wait for it to finish
+            if isinstance(x, process.ProcessThread):
+                yield x.join()
+            # otherwise, action did something else (probably running a bunch of threads),
+            # and is now finished, so this thread is, too
+
+        hist = interfaces.IHistoryElt(self.project)
+        th = process.ProcessThread(hist, runAction)
+        th.start()
+        return th
