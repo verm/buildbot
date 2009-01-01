@@ -5,7 +5,8 @@
 #   <oldrev> <newrev> <refname>
 #
 # For example:
-#   aa453216d1b3e49e7f6f98441fa56946ddcd6a20 68f7abf4e6f922807889f52bc043ecd31b79f814 refs/heads/master
+#   aa453216d1b3e49e7f6f98441fa56946ddcd6a20
+#   68f7abf4e6f922807889f52bc043ecd31b79f814 refs/heads/master
 #
 # Each of these changes will be passed to the buildbot server along
 # with any other change information we manage to extract from the
@@ -13,7 +14,11 @@
 #
 # Largely based on contrib/hooks/post-receive-email from git.
 
-import commands, logging, os, re, sys
+import commands
+import logging
+import os
+import re
+import sys
 
 from twisted.spread import pb
 from twisted.cred import credentials
@@ -32,10 +37,12 @@ master = "localhost:9989"
 
 changes = []
 
+
 def connectFailed(error):
     logging.error("Could not connect to %s: %s"
             % (master, error.getErrorMessage()))
     return error
+
 
 def addChange(dummy, remote, changei):
     logging.debug("addChange %s, %s" % (repr(remote), repr(changei)))
@@ -53,12 +60,14 @@ def addChange(dummy, remote, changei):
     d.addCallback(addChange, remote, changei)
     return d
 
+
 def connected(remote):
     return addChange(None, remote, changes.__iter__())
 
+
 def grab_commit_info(c, rev):
-    # Extract information about committer and files using git-show
-    f = os.popen("git-show --raw --pretty=full %s" % rev, 'r')
+    # Extract information about committer and files using git show
+    f = os.popen("git show --raw --pretty=full %s" % rev, 'r')
 
     files = []
 
@@ -78,10 +87,14 @@ def grab_commit_info(c, rev):
             logging.debug("Got committer: %s" % m.group(1))
             c['who'] = m.group(1)
 
+        if re.match(r"^Merge: .*$", line):
+            files.append('merge')
+
     c['files'] = files
     status = f.close()
     if status:
-        logging.warning("git-show exited with status %d" % status)
+        logging.warning("git show exited with status %d" % status)
+
 
 def gen_changes(input, branch):
     while True:
@@ -92,10 +105,13 @@ def gen_changes(input, branch):
         logging.debug("Change: %s" % line)
 
         m = re.match(r"^([0-9a-f]+) (.*)$", line.strip())
-        c = { 'revision': m.group(1), 'comments': m.group(2),
-                'branch': branch }
+        c = {'revision': m.group(1),
+             'comments': m.group(2),
+             'branch': branch,
+        }
         grab_commit_info(c, m.group(1))
         changes.append(c)
+
 
 def gen_create_branch_changes(newrev, refname, branch):
     # A new branch has been created. Generate changes for everything
@@ -107,16 +123,17 @@ def gen_create_branch_changes(newrev, refname, branch):
 
     logging.info("Branch `%s' created" % branch)
 
-    f = os.popen("git-rev-parse --not --branches"
-            + "| grep -v $(git-rev-parse %s)" % refname
-            + "| git-rev-list --reverse --pretty=oneline --stdin %s" % newrev,
+    f = os.popen("git rev-parse --not --branches"
+            + "| grep -v $(git rev-parse %s)" % refname
+            + "| git rev-list --reverse --pretty=oneline --stdin %s" % newrev,
             'r')
 
     gen_changes(f, branch)
 
     status = f.close()
     if status:
-        logging.warning("git-rev-list exited with status %d" % status)
+        logging.warning("git rev-list exited with status %d" % status)
+
 
 def gen_update_branch_changes(oldrev, newrev, refname, branch):
     # A branch has been updated. If it was a fast-forward update,
@@ -130,15 +147,17 @@ def gen_update_branch_changes(oldrev, newrev, refname, branch):
     logging.info("Branch `%s' updated %s .. %s"
             % (branch, oldrev[:8], newrev[:8]))
 
-    baserev = commands.getoutput("git-merge-base %s %s" % (oldrev, newrev))
+    baserev = commands.getoutput("git merge-base %s %s" % (oldrev, newrev))
     logging.debug("oldrev=%s newrev=%s baserev=%s" % (oldrev, newrev, baserev))
     if baserev != oldrev:
-        c = { 'revision': baserev, 'comments': "Rewind branch",
-                'branch': branch, 'who': "dummy" }
-
+        c = {'revision': baserev,
+             'comments': "Rewind branch",
+             'branch': branch,
+             'who': "dummy",
+        }
         logging.info("Branch %s was rewound to %s" % (branch, baserev[:8]))
         files = []
-        f = os.popen("git-diff --raw %s..%s" % (oldrev, baserev), 'r')
+        f = os.popen("git diff --raw %s..%s" % (oldrev, baserev), 'r')
         while True:
             line = f.readline()
             if not line:
@@ -150,7 +169,7 @@ def gen_update_branch_changes(oldrev, newrev, refname, branch):
 
         status = f.close()
         if status:
-            logging.warning("git-diff exited with status %d" % status)
+            logging.warning("git diff exited with status %d" % status)
 
         if files:
             c['files'] = files
@@ -158,16 +177,18 @@ def gen_update_branch_changes(oldrev, newrev, refname, branch):
 
     if newrev != baserev:
         # Not a pure rewind
-        f = os.popen("git-rev-list --reverse --pretty=oneline %s..%s"
+        f = os.popen("git rev-list --reverse --pretty=oneline %s..%s"
                 % (baserev, newrev), 'r')
         gen_changes(f, branch)
 
         status = f.close()
         if status:
-            logging.warning("git-rev-list exited with status %d" % status)
+            logging.warning("git rev-list exited with status %d" % status)
+
 
 def cleanup(res):
     reactor.stop()
+
 
 def process_changes():
     # Read branch updates from stdin and generate Change events
@@ -214,6 +235,7 @@ def process_changes():
 
     reactor.run()
 
+
 def parse_options():
     parser = OptionParser()
     parser.add_option("-l", "--logfile", action="store", type="string",
@@ -222,6 +244,7 @@ def parse_options():
             help="Be more verbose. Ignored if -l is not specified.")
     options, args = parser.parse_args()
     return options
+
 
 # Log errors and critical messages to stderr. Optionally log
 # information to a file as well (we'll set that up later.)
@@ -251,4 +274,3 @@ try:
 except:
     logging.exception("Unhandled exception")
     sys.exit(1)
-

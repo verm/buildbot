@@ -95,6 +95,8 @@ class MyStatus:
         return self.url
     def getURLForThing(self, thing):
         return None
+    def getProjectName(self):
+        return "myproj"
 
 class MyBuilder(builder.BuilderStatus):
     nextBuildNumber = 0
@@ -165,8 +167,8 @@ class Mail(unittest.TestCase):
         self.failUnless(len(self.messages) == 1)
         m,r = self.messages.pop()
         t = m.as_string()
-        self.failUnlessIn("To: bob@dev.com, recip2@example.com, "
-                          "recip@example.com\n", t)
+        self.failUnlessIn("To: bob@dev.com\n", t)
+        self.failUnlessIn("CC: recip2@example.com, recip@example.com\n", t)
         self.failUnlessIn("From: buildbot@example.com\n", t)
         self.failUnlessIn("Subject: buildbot success in PROJECT on builder1\n", t)
         self.failUnlessIn("Date: ", t)
@@ -291,14 +293,14 @@ class Mail(unittest.TestCase):
         self.failUnless(len(self.messages) == 1)
         m,r = self.messages.pop()
         t = m.as_string()
-        self.failUnlessIn("To: dev3@dev.com, dev4@dev.com, "
-                          "recip2@example.com, recip@example.com\n", t)
+        self.failUnlessIn("To: dev3@dev.com, dev4@dev.com\n", t)
+        self.failUnlessIn("CC: recip2@example.com, recip@example.com\n", t)
         self.failUnlessIn("From: buildbot@example.com\n", t)
         self.failUnlessIn("Subject: buildbot failure in PROJECT on builder1\n", t)
         self.failUnlessIn("The Buildbot has detected a new failure", t)
         self.failUnlessIn("BUILD FAILED: snarkleack polarization failed\n", t)
-        self.failUnlessEqual(r, ["dev3@dev.com", "dev4@dev.com",
-                                 "recip2@example.com", "recip@example.com"])
+        self.failUnlessEqual(set(r), set(["dev3@dev.com", "dev4@dev.com",
+                                 "recip2@example.com", "recip@example.com"]))
 
     def testLogs(self):
         basedir = "test_status_logs"
@@ -353,7 +355,6 @@ class Mail(unittest.TestCase):
                              'test', "Test log here\nTest 4 failed\n"),
                    ]
 
-        print "sending mail to", dest
         d = mailer.buildFinished("builder1", b1, b1.results)
         # When this fires, the mail has been sent, but the SMTP connection is
         # still up (because smtp.sendmail relies upon the server to hang up).
@@ -794,6 +795,10 @@ class STarget(base.StatusReceiver):
             print "EXP", step.getExpectations()
         if "step" in self.mode:
             return self
+    def stepTextChanged(self, build, step, text):
+        self.events.append(("stepTextChanged", step, text))
+    def stepText2Changed(self, build, step, text2):
+        self.events.append(("stepText2Changed", step, text2))
     def stepETAUpdate(self, build, step, ETA, expectations):
         self.events.append(("stepETAUpdate", build, step, ETA, expectations))
         self.announce()
@@ -903,9 +908,12 @@ class Subscription(RunMixin, unittest.TestCase):
                               "builderChangedState", # idle
                               "builderChangedState", # building
                               "buildStarted",
-                              "stepStarted", "stepETAUpdate", "stepFinished",
+                              "stepStarted", "stepETAUpdate", 
+                              "stepTextChanged", "stepFinished",
                               "stepStarted", "stepETAUpdate",
-                              "logStarted", "logFinished", "stepFinished",
+                              "stepTextChanged", "logStarted", "logFinished",
+                              "stepTextChanged", "stepText2Changed",
+                              "stepFinished",
                               "buildFinished",
                               "builderChangedState", # idle
                               ])

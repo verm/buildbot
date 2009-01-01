@@ -1396,6 +1396,10 @@ class SourceBase(Command):
         command = ["rm", "-rf", d]
         c = ShellCommand(self.builder, command, self.builder.basedir,
                          sendRC=0, timeout=self.timeout)
+
+        # Work around for Bug #255
+        c.usePTY = False
+
         self.command = c
         # sendRC=0 means the rm command will send stdout/stderr to the
         # master, but not the rc=0 when it finishes. That job is left to
@@ -2233,12 +2237,18 @@ class Mercurial(SourceBase):
         if os.path.exists(os.path.join(self.builder.basedir,
                                        self.srcdir, ".buildbot-patched")):
             return False
+        # like Darcs, to check out a specific (old) revision, we have to do a
+        # full checkout. TODO: I think 'hg pull' plus 'hg update' might work
+        if self.revision:
+            return False
         return os.path.isdir(os.path.join(self.builder.basedir,
                                           self.srcdir, ".hg"))
 
     def doVCUpdate(self):
         d = os.path.join(self.builder.basedir, self.srcdir)
-        command = [self.vcexe, 'pull', '--verbose']
+        command = [self.vcexe, 'pull', '--update', '--verbose']
+        if self.args.get('revision'):
+            command.extend(['--rev', self.args['revision']])
         c = ShellCommand(self.builder, command, d,
                          sendRC=False, timeout=self.timeout,
                          keepStdout=True)
@@ -2248,32 +2258,14 @@ class Mercurial(SourceBase):
         return d
 
     def _handleEmptyUpdate(self, res):
-        if res == 0:
-            return self._doUpdate()
-
         if type(res) is int and res == 1:
             if self.command.stdout.find("no changes found") != -1:
                 # 'hg pull', when it doesn't have anything to do, exits with
                 # rc=1, and there appears to be no way to shut this off. It
                 # emits a distinctive message to stdout, though. So catch
                 # this and pretend that it completed successfully.
-                return self._doUpdate()
+                return 0
         return res
-
-    def _doUpdate(self):
-        dir = os.path.join(self.builder.basedir, self.srcdir)
-        # When cloning a tree without a specified revision, you get the tip
-        # of the default branch. Do the same thing when updating without
-        # a specified revision.
-        if self.args.has_key('revision'):
-            rev = self.args['revision']
-        else:
-            rev = 'default'
-        command = [self.vcexe, 'update', '-C', '--rev', rev]
-        c = ShellCommand(self.builder, command, dir,
-                         sendRC=False, timeout=self.timeout,
-                         keepStdout=True)
-        return c.start()
 
     def doVCFull(self):
         d = os.path.join(self.builder.basedir, self.srcdir)

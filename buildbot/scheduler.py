@@ -275,6 +275,11 @@ class AnyBranchScheduler(BaseUpstreamScheduler):
                 bts.append(s.nextBuildTime)
         return bts
 
+    def buildSetFinished(self, bss):
+        # we don't care if a build has finished; one of the per-branch builders
+        # will take care of it, instead.
+        pass
+
     def addChange(self, change):
         branch = change.branch
         if self.branches is not None and branch not in self.branches:
@@ -292,6 +297,7 @@ class AnyBranchScheduler(BaseUpstreamScheduler):
                                       self.fileIsImportant)
             s.successWatchers = self.successWatchers
             s.setServiceParent(self)
+            s.properties = self.properties
             # TODO: does this result in schedulers that stack up forever?
             # When I make the persistify-pass, think about this some more.
             self.schedulers[branch] = s
