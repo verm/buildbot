@@ -4,14 +4,14 @@ from twisted.internet import defer, reactor
 from buildbot.framework import pools, interfaces, process
 from buildbot import uthreads
 
-class Scheduler(pools.PoolMember):
+class Scheduler(pools.ServicePoolMember):
     """
     Parent class for all schedulers.  See
     L{buildbot.framework.interfaces.IScheduler} for requirements
     for subclasses.
     """
     def __init__(self, name, action, project=None):
-        pools.PoolMember.__init__(self, name)
+        pools.ServicePoolMember.__init__(self, name)
 
         self.action = action
         self.project = project

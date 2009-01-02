@@ -44,12 +44,20 @@ class PoolMember(service.Service):
         useNewMembers option is false.
         """
 
-class ServicePool(service.MultiService):
+class ServicePoolMember(service.Service, PoolMember):
     """
-    A ServicePool tracks a set of PoolMember objects, and has
-    the capacity to replace the pool with a new set of objects.
-    It is used to support incremental upgrades to configuration.
-    The PoolMember objects are child services.
+    A ServicePoolMember is a service that resides in a ServicePool, and
+    starts or stops the service when added to or removed from the pool, respectively.
+    """
+    def __init__(self, *args, **kwargs):
+        # service.Service does not have a constructor
+        PoolMember.__init__(self, *args, **kwargs)
+
+class Pool(object):
+    """
+    A Pool tracks a set of PoolMember objects, and has the capacity to replace
+    the pool with a new set of objects.  It is used to support incremental
+    upgrades to configuration.
 
     When an upgrade begins, the buildmaster calls markOld, which marks
     all existing members of the pool as "old".  The new configuration
@@ -80,7 +88,6 @@ class ServicePool(service.MultiService):
     """
 
     def __init__(self, useNewMembers):
-        service.MultiService.__init__(self)
         self.useNewMembers = useNewMembers
         self.poolmembers = {}
 
@@ -100,6 +107,12 @@ class ServicePool(service.MultiService):
         """
         return self.poolmembers.keys()
 
+    def getMembers(self):
+        """
+        Get all members in unspecified order.
+        """
+        return self.poolmembers.values()
+
     def getMemberNamed(self, name):
         """
         Get the member with the given name.
@@ -109,9 +122,10 @@ class ServicePool(service.MultiService):
     @uthreads.uthreaded
     def addMember(self, newmember):
         """
-        Add a PoolMember to this pool.  The member should not be started, nor
-        should it have a service parent.  Returns a deferred.
+        Add a PoolMember to this pool.  The member should not be started.
+        Returns a deferred.
         """
+
         assert isinstance(newmember, PoolMember), "%s is not a PoolMember" % member
 
         name = newmember.name
@@ -121,7 +135,7 @@ class ServicePool(service.MultiService):
                 if self.useNewMembers:
                     newmember.replacePredecessor(existing)
                     del self.poolmembers[name]
-                    yield self.removeService(existing)
+                    yield self.stopMember(existing)
                 else:
                     existing.emulateNewMember(newmember)
                     existing.isOldMember = False
@@ -132,7 +146,7 @@ class ServicePool(service.MultiService):
 
         newmember.isOldMember = False
         self.poolmembers[name] = newmember
-        self.addService(newmember)
+        self.startMember(newmember)
 
     @uthreads.uthreaded
     def removeOld(self):
@@ -141,5 +155,29 @@ class ServicePool(service.MultiService):
         """
         for name, member in self.poolmembers.items():
             if member.isOldMember:
-                yield self.removeService(member)
+                yield self.stopMember(member)
                 del self.poolmembers[name]
+
+    # override these in subclasses
+
+    def startMember(self, member):
+        pass
+
+    def stopMember(self, member):
+        pass
+
+class ServicePool(service.MultiService, Pool):
+    """
+    A ServicePool is a L{Pool} and a L{service.MultiService}, and knows
+    how to add and remove L{ServicePoolMember}s from the MultiService.
+    """
+    def __init__(self, *args, **kwargs):
+        service.MultiService.__init__(self)
+        Pool.__init__(self, *args, **kwargs)
+
+    def startMember(self, member):
+        self.addService(member)
+
+    def stopMember(self, member):
+        self.removeService(member)
+

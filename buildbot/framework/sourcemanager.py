@@ -4,14 +4,14 @@ from twisted.internet import defer, reactor
 from buildbot.framework import pools, subscriptions
 from buildbot import uthreads
 
-class SourceManager(pools.PoolMember):
+class SourceManager(pools.ServicePoolMember):
     """
     Parent class for all source managers.  See 
     L{buildbot.framework.interfaces.ISourceManager} for requirements
     for subclasses.
     """
     def __init__(self, name):
-        pools.PoolMember.__init__(self, name)
+        pools.ServicePoolMember.__init__(self, name)
         self.subscribers = subscriptions.SubscriptionHandler()
 
     ## subscription management

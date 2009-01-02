@@ -23,8 +23,9 @@ project = history.getProject("stuffproj", create=True)
 #    ))
 
 @buildStep("say")
-def say(ctxt, what):
-    print "SAY:", what
+def say(ctxt, what, slave=None):
+    if not slave: slave = ctxt.slave
+    print "%s SAYS: %s" % (slave.name, what)
 
 @buildStep("complex_say")
 def complex_say(ctxt, what):
@@ -35,8 +36,9 @@ def complex_say(ctxt, what):
 
 @spawnsBuild("dostuff")
 def dostuff(ctxt):
-    yield say(ctxt, "hello")
-    yield complex_say(ctxt, "cruel")
+    sl = ctxt.slave = (yield buildbot.buildmaster.slaves.find())
+    yield say(ctxt, "hello", slave=sl)
+    yield complex_say(ctxt, "cruel") # will use the default slave
     yield say(ctxt, "world")
 
     print "history:"
@@ -55,8 +57,13 @@ sched = addScheduler(
         action=dostuff
     ))
 
-#sl = addSlave(
-#    Slave(
-#        name="worker",
-#        password="hi",
-#    ))
+sl = addSlave(
+    Slave(
+        name="worker1",
+        password="hi",
+    ))
+sl = addSlave(
+    Slave(
+        name="worker2",
+        password="hi",
+    ))

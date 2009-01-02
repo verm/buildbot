@@ -1,4 +1,6 @@
-import os, sys
+import os
+import sys
+import random
 
 signal = None
 try:
@@ -11,7 +13,7 @@ from twisted.python import log, components
 from twisted.internet import defer, reactor
 from twisted.application import service
 
-from buildbot.framework import pools, exceptions, interfaces
+from buildbot.framework import pools, exceptions, interfaces, slaves
 import buildbot
 import buildbot.config
 
@@ -24,8 +26,8 @@ class BuildMaster(service.MultiService):
     the source manager pool, and the scheduler pool, and to manage the
     configuration file.
 
-    @ivar slavePool: pool of slaves services
-    @type slavePool: L{buildbot.framework.pools.ServicePool}
+    @ivar slaves: pool of slaves
+    @type slaves: L{buildbot.framework.slaves.SlaveManager}
 
     @ivar sourceManagerPool: pool of source managers
     @type sourceManagerPool: L{buildbot.framework.pools.ServicePool}
@@ -50,9 +52,9 @@ class BuildMaster(service.MultiService):
         self.masterdir = masterdir
         self.configFile = configFile
 
-        self.slavePool = pools.ServicePool(useNewMembers=False)
-        self.slavePool.setName("Slave Pool")
-        self.slavePool.setServiceParent(self)
+        self.slaves = slaves.SlaveManager()
+        self.slaves.setName("Slave Manager")
+        self.slaves.setServiceParent(self)
 
         self.sourceManagerPool = pools.ServicePool(useNewMembers=True)
         self.sourceManagerPool.setName("SourceManager Pool")
@@ -65,8 +67,6 @@ class BuildMaster(service.MultiService):
         self.historyPool = pools.ServicePool(useNewMembers=True)
         self.historyPool.setName("History Pool")
         self.historyPool.setServiceParent(self)
-
-        self.defaultHistoryManager = None
 
     def startService(self):
         service.MultiService.startService(self)
@@ -118,7 +118,6 @@ class BuildMaster(service.MultiService):
 
         # add a few variables of our own
         localDict['masterdir'] = self.masterdir
-        localDict['buildmaster'] = self
 
         new_slaves = []
         def addSlave(sl):
@@ -161,10 +160,10 @@ class BuildMaster(service.MultiService):
         # update each of the service pools appropriately; this takes care
         # of any necessary starting and stopping of services
         log.msg("updating slaves")
-        self.slavePool.markOld()
+        self.slaves.markOld()
         for slave in new_slaves:
-            yield self.slavePool.addMember(slave)
-        self.slavePool.removeOld()
+            yield self.slaves.addMember(slave)
+        self.slaves.removeOld()
 
         log.msg("updating source managers")
         self.sourceManagerPool.markOld()
