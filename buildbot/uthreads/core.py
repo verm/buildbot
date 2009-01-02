@@ -158,10 +158,11 @@ class uThread(object):
           # wait until worker has finished
           yield worker.join()
         """
-        # TODO: will errback on unhandled exception; do the same with
-        # already-finished threads
         if self._state == self.FINISHED: 
-            return self._result
+            if self._result[0]:
+                return self._result[1]
+            else:
+                raise self._result[1][0], self._result[1][1], self._result[1][2]
 
         # invent a _join_sleepq if necessary
         if not self._join_sleepq:
@@ -190,18 +191,20 @@ class uThread(object):
     # TODO: remove
     def _toplevel(self):
         try:
-            self._result = yield self.run()
+            self._result = (True, (yield self.run()))
         except:
+            # TODO: trim traceback down to here
             self._state = self.FINISHED
+            self._result = (False, sys.exc_info())
             if self._join_sleepq:
                 self._join_sleepq.throw(failure.Failure())
             else:
-                # TODO: trim traceback down to here
-                log.err()
+                log.msg("Possible uncaught exception in uThread: %r" % (self._result[1][1],))
+                # TODO: handle this when the uThread is GC'd?
         else:
             self._state = self.FINISHED
             if self._join_sleepq:
-                self._join_sleepq.wake(self._result)
+                self._join_sleepq.wake(self._result[1])
 
     def _step(self):
         global _current_thread

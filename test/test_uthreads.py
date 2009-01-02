@@ -146,6 +146,22 @@ class core(TestCase):
             raise TestFailed, "exception not caught"
 
     @uthreaded_test()
+    def test_uthread_immediate_exception(self):
+        def other_thread():
+            yield # make it a generator
+            raise RuntimeError
+        th = spawn(other_thread())
+
+        yield sleep(0.1)
+        assert not th.isAlive(), "thread should have finished already"
+        try:
+            yield th.join()
+        except RuntimeError:
+            pass
+        else:
+            raise TestFailed, "exception not caught"
+
+    @uthreaded_test()
     def test_multilevel_exception(self):
         def fn_raises_assertion():
             yield
