@@ -26,15 +26,14 @@ class Scheduler(pools.PoolMember):
         an exception.  The uThread is returned, so the scheduler can wait for
         or otherwise monitor it for results.
         """
-        def runAction():
-            x = (yield self.action())
+        def runAction(ctxt):
+            x = (yield self.action(ctxt))
             # if action() just triggered a build, then wait for it to finish
-            if isinstance(x, process.ProcessThread):
+            if isinstance(x, uthreads.uThread):
                 yield x.join()
             # otherwise, action did something else (probably running a bunch of threads),
-            # and is now finished, so this thread is, too
+            # and is now finished, so this thread is finished, too
 
         hist = interfaces.IHistoryElt(self.project)
-        th = process.ProcessThread(hist, runAction)
-        th.start()
-        return th
+        ctxt = process.Context(hist)
+        return uthreads.spawn(runAction(ctxt))

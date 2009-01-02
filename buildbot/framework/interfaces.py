@@ -105,15 +105,17 @@ class IContext(Interface):
     state of processing of a particular build.
     """
 
+    parent = Attribute("""Parent context, or None if this is the top level""")
     hist = Attribute("""Current L{IHistoryElt} provider""")
 
     # TODO:
     # slave = Attribute("""Current default slave on which to run commands""")
     # props = Attribute("""Accumulated properties for this build""")
 
-    def newSubcontext(subhistory):
+    def subcontext(hist=None):
         """Create a shallow copy of this context object for use in a sub-step
-        or sub-build, with the given history attribute."""
+        or sub-build.  Keyword arguments are used to override attributes in
+        the subcontext."""
 
 ## History
 #

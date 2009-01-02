@@ -23,21 +23,21 @@ project = history.getProject("stuffproj", create=True)
 #    ))
 
 @buildStep("say")
-def say(what):
+def say(ctxt, what):
     print "SAY:", what
 
 @buildStep("complex_say")
-def complex_say(what):
+def complex_say(ctxt, what):
     print "preparing.."
-    yield say(what)
-    yield say(what + "!!")
+    yield say(ctxt, what)
+    yield say(ctxt, what + "!!")
     print "cleaning up.."
 
 @spawnsBuild("dostuff")
-def dostuff():
-    yield say("hello")
-    yield complex_say("cruel")
-    yield say("world")
+def dostuff(ctxt):
+    yield say(ctxt, "hello")
+    yield complex_say(ctxt, "cruel")
+    yield say(ctxt, "world")
 
     print "history:"
     yield print_histelt(project)

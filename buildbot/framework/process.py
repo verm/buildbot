@@ -1,21 +1,26 @@
+import copy
 from zope.interface import implements
 from twisted.python import log, components
 from twisted.internet import defer, reactor
 from buildbot.framework import interfaces
 from buildbot import uthreads
 
-class ProcessThread(uthreads.uThread):
+class Context(object):
     """
-    A uThread with extra attributes used to track the status of build processing.
-    
-    @ivar hist: the current L{IHistoryElement}
-    @type hist: L{IHistoryElement} provider
+    The current status of the build process.  This is passed around as 'ctxt' in
+    all process-related functions.  See L{interfaces.IContext} for a description
+    of the class attributes.
     """
-    __slots__ = ( 'hist' )
+    implements(interfaces.IContext)
 
-    def __init__(self, hist, *args, **kwargs):
-        uthreads.uThread.__init__(self, *args, **kwargs)
-        self.hist = hist
+    def __init__(self, project):
+        self.hist = project
+
+    def subcontext(self, **kwargs):
+        ctxt = copy.copy(self)
+        for k,v in kwargs.iteritems():
+            setattr(ctxt, k, v)
+        return ctxt
 
 ##
 # Useful decorators for process functions
@@ -29,13 +34,12 @@ def spawnsBuild(buildName):
           # ...
     """
     def d(fn):
-        def spawnBuild(*args, **kwargs):
-            pth = uthreads.current_thread()
-            unique = yield _uniquifyName(buildName, pth.hist)
-            subhistory = (yield pth.hist.newBuild(unique))
-            subth = ProcessThread(pth.hist, fn, args, kwargs)
-            subth.start()
-            raise StopIteration(subth)
+        def spawnBuild(ctxt, *args, **kwargs):
+            unique = yield _uniquifyName(buildName, ctxt.hist)
+            subctxt = ctxt.subcontext(
+                hist=(yield ctxt.hist.newBuild(unique)))
+            th = uthreads.spawn(fn(subctxt, *args, **kwargs))
+            raise StopIteration(th)
         return spawnBuild
     return d
 
@@ -44,16 +48,11 @@ def buildStep(stepName):
     Decorate a build function to create a new IStepHistory when called.
     """
     def d(fn):
-        def wrapBuildStep(*args, **kwargs):
-            pth = uthreads.current_thread()
-            unique = yield _uniquifyName(stepName, pth.hist)
-
-            oldhist = pth.hist
-            pth.hist = (yield pth.hist.newStep(unique))
-            try:
-                yield fn(*args, **kwargs)
-            finally:
-                pth.hist = oldhist
+        def wrapBuildStep(ctxt, *args, **kwargs):
+            unique = yield _uniquifyName(stepName, ctxt.hist)
+            subctxt = ctxt.subcontext(
+                hist=(yield ctxt.hist.newStep(unique)))
+            yield fn(subctxt, *args, **kwargs)
         return wrapBuildStep
     return d
 
