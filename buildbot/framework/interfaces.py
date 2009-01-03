@@ -111,6 +111,20 @@ class ISlave(Interface):
     A Slave manages the connection from a remote machine.
     """
 
+    def getSlaveEnvoronment(name):
+        """Get an L{ISlaveSlaveEnvironment} provider with the given name.  The
+        name is used to choose the initial working directory, and should not
+        conflict with other, active slave environments.  It is not an error for
+        the directory to exist already, but it should be created if
+        necessary.  Microthreaded function"""
+
+class ISlaveEnvironment(Interface):
+    """
+    A slave environment represents a particular set of conditions on a slave,
+    including a working directory, environment variables, and so on.   It is
+    the context in which the slave can execute commands.
+    """
+
     def runCommand(command):
         """Run a command (L{buildbot.framework.interfaces.ICommand}) on
         the slave.  Returns a deferred which fires when the command

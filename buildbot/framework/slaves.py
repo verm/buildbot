@@ -15,7 +15,7 @@ class SlaveManager(service.Service, pools.Pool):
     def __init__(self):
         pools.Pool.__init__(self, useNewMembers=False)
 
-    def find(self, filter=None, wait=True):
+    def getSlaveEnvironment(self, name, filter=None, wait=True):
         if filter is None: filter = lambda x : True
         candidates = [
             sl for sl in self.poolmembers.values()
@@ -27,7 +27,12 @@ class SlaveManager(service.Service, pools.Pool):
 
         # TODO: limit to available, block if necessary
 
-        return random.choice(candidates)
+        # TODO: shell out to load balancing algo
+        slave = random.choice(candidates)
+
+        slenv = (yield slave.getSlaveEnvironment(name))
+        assert interfaces.ISlaveEnvironment.providedBy(slenv)
+        raise StopIteration(slenv)
 
     def stopMember(self, slave):
         pass
@@ -52,13 +57,3 @@ class Slave(pools.PoolMember):
         self.password = password
 
     # TODO: emulateNewMember
-
-    @uthreads.uthreaded
-    def runCommand(self, command):
-        """Run a command (an instance of a subclass of
-        L{buildbot.framework.command.Comand}) on the slave.  Returns a
-        deferred which fires when the command completes, or fails if
-        a Python exception occurs.  The command is responsible for
-        collecting any more detailed information."""
-        # TODO: stub for now
-        yield command.run()

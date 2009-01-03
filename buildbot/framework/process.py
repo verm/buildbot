@@ -15,7 +15,7 @@ class Context(object):
 
     def __init__(self, project):
         self.hist = project
-        self.slave = None
+        self.slenv = None
 
     def subcontext(self, **kwargs):
         ctxt = copy.copy(self)
@@ -34,8 +34,8 @@ def spawnsBuild(buildName):
       def archtest(arch):
           # ...
 
-    Note that the new build runs in its own uThread, and begins with no slaves
-    available.  The decorated function will return its uThread::
+    Note that the new build runs in its own uThread, and begins with no slave
+    environments available.  The decorated function will return its uThread::
       archthreads = [ archtest(arch) for arch in architectures ]
     """
     def d(fn):
@@ -43,7 +43,7 @@ def spawnsBuild(buildName):
             unique = yield _uniquifyName(buildName, ctxt.hist)
             subctxt = ctxt.subcontext(
                 hist=(yield ctxt.hist.newBuild(unique)),
-                slaves=[])
+                slenv=None)
             th = uthreads.spawn(fn(subctxt, *args, **kwargs))
             raise StopIteration(th)
         return spawnBuild

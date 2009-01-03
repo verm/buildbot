@@ -5,6 +5,7 @@ import re
 from buildbot import uthreads
 from buildbot.resources.schedulers.dummysched import DummyScheduler
 from buildbot.resources.history.ramhistory import RamHistoryManager
+from buildbot.resources.slaves.dummyslave import DummySlave
 
 # create a history manager to store build history
 history = addHistoryManager(
@@ -23,9 +24,9 @@ project = history.getProject("stuffproj", create=True)
 #    ))
 
 @buildStep("say")
-def say(ctxt, what, slave=None):
-    if not slave: slave = ctxt.slave
-    print "%s SAYS: %s" % (slave.name, what)
+def say(ctxt, what, slenv=None):
+    if not slenv: slenv = ctxt.slenv
+    slenv.runCommand("echo '%s'" % what)
 
 @buildStep("complex_say")
 def complex_say(ctxt, what):
@@ -36,10 +37,13 @@ def complex_say(ctxt, what):
 
 @spawnsBuild("dostuff")
 def dostuff(ctxt):
-    sl = ctxt.slave = (yield buildbot.buildmaster.slaves.find())
-    yield say(ctxt, "hello", slave=sl)
+    # TODO: this is *too complex*:
+    slenv = (yield buildbot.buildmaster.slaves.getSlaveEnvironment("dostuff-1"))
+    ctxt.slenv = (yield buildbot.buildmaster.slaves.getSlaveEnvironment("dostuff-2"))
+    yield say(ctxt, "hello", slenv=slenv)
     yield complex_say(ctxt, "cruel") # will use the default slave
     yield say(ctxt, "world")
+    slenv.runCommand("pwd")
 
     print "history:"
     yield print_histelt(project)
@@ -57,13 +61,13 @@ sched = addScheduler(
         action=dostuff
     ))
 
-sl = addSlave(
-    Slave(
+addSlave(
+    DummySlave(
         name="worker1",
         password="hi",
     ))
-sl = addSlave(
-    Slave(
+addSlave(
+    DummySlave(
         name="worker2",
         password="hi",
     ))
