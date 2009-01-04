@@ -30,7 +30,7 @@ class RamHistoryManager(history.HistoryManager):
             self.projects[name] = ProjectHistory((name,))
         return self.projects[name]
 
-class HistoryElt(object):
+class HistoryElt(history.HistoryElt):
     implements(interfaces.IHistoryElt)
 
     def __init__(self, historyEltIdPath):
@@ -50,21 +50,19 @@ class HistoryElt(object):
     def getHistoryEltIdPath(self):
         return self.historyEltIdPath
 
-    def newBuild(self, key):
-        if self.childElts.has_key(key):
-            raise KeyError, "%s already has a child named '%s'" % (self, key)
+    def newBuild(self, name):
+        key = (yield self.uniqueName(name))
         n = BuildHistory(self.historyEltIdPath + (key,))
         self.childEltsKeys.append(key)
         self.childElts[key] = n
-        return n
+        raise StopIteration(n)
 
-    def newStep(self, key):
-        if self.childElts.has_key(key):
-            raise KeyError, "%s already has a child named '%s'" % (self, key)
+    def newStep(self, name):
+        key = (yield self.uniqueName(name))
         n = StepHistory(self.historyEltIdPath + (key,))
         self.childEltsKeys.append(key)
         self.childElts[key] = n
-        return n
+        raise StopIteration(n)
 
 class ProjectHistory(HistoryElt):
     implements(interfaces.IProjectHistory)

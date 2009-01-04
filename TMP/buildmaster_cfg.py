@@ -23,13 +23,12 @@ project = history.getProject("stuffproj", create=True)
 #        interval=1,
 #    ))
 
-@buildStep("say")
 def say(ctxt, what, slenv=None):
     if not slenv: slenv = ctxt.slenv
-    slenv.runCommand("echo '%s'" % what)
+    yield slenv.shellCommand(ctxt, "echo '%s'" % what)
 
-@buildStep("complex_say")
-def complex_say(ctxt, what):
+@buildStep("yell")
+def yell(ctxt, what):
     print "preparing.."
     yield say(ctxt, what)
     yield say(ctxt, what + "!!")
@@ -41,9 +40,9 @@ def dostuff(ctxt):
     slenv = (yield buildbot.buildmaster.slaves.getSlaveEnvironment("dostuff-1"))
     ctxt.slenv = (yield buildbot.buildmaster.slaves.getSlaveEnvironment("dostuff-2"))
     yield say(ctxt, "hello", slenv=slenv)
-    yield complex_say(ctxt, "cruel") # will use the default slave
+    yield yell(ctxt, "cruel") # will use the default slave
     yield say(ctxt, "world")
-    slenv.runCommand("pwd")
+    yield slenv.shellCommand(ctxt, "pwd")
 
     print "history:"
     yield print_histelt(project)

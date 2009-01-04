@@ -40,9 +40,8 @@ def spawnsBuild(buildName):
     """
     def d(fn):
         def spawnBuild(ctxt, *args, **kwargs):
-            unique = yield _uniquifyName(buildName, ctxt.hist)
             subctxt = ctxt.subcontext(
-                hist=(yield ctxt.hist.newBuild(unique)),
+                hist=(yield ctxt.hist.newBuild(buildName)),
                 slenv=None)
             th = uthreads.spawn(fn(subctxt, *args, **kwargs))
             raise StopIteration(th)
@@ -55,26 +54,8 @@ def buildStep(stepName):
     """
     def d(fn):
         def wrapBuildStep(ctxt, *args, **kwargs):
-            unique = yield _uniquifyName(stepName, ctxt.hist)
             subctxt = ctxt.subcontext(
-                hist=(yield ctxt.hist.newStep(unique)))
+                hist=(yield ctxt.hist.newStep(stepName)))
             yield fn(subctxt, *args, **kwargs)
         return wrapBuildStep
     return d
-
-##
-# Utility functions
-
-def _uniquifyName(name, hist):
-    """Generate a unqiue name for a child of hist by appending a dash and a
-    number."""
-    kidNames = yield hist.getChildEltKeys()
-    if name not in kidNames:
-        raise StopIteration(name)
-    i = 1
-    while 1:
-        namenum = "%s-%d" % (name, i)
-        if namenum not in kidNames:
-            raise StopIteration(namenum)
-        i += 1
-

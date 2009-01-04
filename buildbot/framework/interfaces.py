@@ -123,13 +123,66 @@ class ISlaveEnvironment(Interface):
     A slave environment represents a particular set of conditions on a slave,
     including a working directory, environment variables, and so on.   It is
     the context in which the slave can execute commands.
+
+    All of the methods on slave environments create a new L{IStepHistory}
+    element to record the details of the operation.
     """
 
-    def runCommand(command):
+    ## filesystem operations
+
+    def chdir(ctxt, newdir, baseRelative=False):
+        """Change the "current directory" for this slave environment.  If
+        C{baseRelative} is true, then newdir is interpreted with respect to
+        the initial/base directory.  Microthreaded function."""
+
+    def rename(ctxt, srcfilename, destfilename):
+        """Use the L{os.rename} function to rename C{srcfilename} to
+        C{destfilename}.  This is subject to the usual restrictions of
+        L{os.rename} on the slave system.  Microthreaded function."""
+
+    def remove(ctxt, filename, recursive=False):
+        """Remove C{filename}, optionally recursively removing whole
+        directories.  Microthreaded function."""
+
+    def mkdir(ctxt, filename):
+        """Create the directory C{filename}, including any intervening
+        directories.  Microthreaded function."""
+
+    ## environment
+
+    def getEnv(ctxt):
+        """Return a dictionary containing all environment variables in the
+        slave environment.  Microthreaded function."""
+
+    def setEnv(ctxt, **kwargs):
+        """Update environment variables on the slave, e.g.,::
+             slenv.setEnv(PATH="/usr/bin", HOME="/home/foo")
+
+        Specifying a value of C{None} will unset the environment variable."""
+
+    ## file transfers
+
+    def upload(ctxt, srcfilename, destfile):
+        """Upload C{srcfilename} from the slave, writing the data to the
+        file-like object C{destfile}.  Microthreaded function."""
+
+    def download(ctxt, srcfile, destfilename,
+                 destperms=None, destuser=None, destgroup=None):
+        """Download data from th file-like object C{srcfile} to the slave,
+        writing the data to C{destfilename}.  If C{destperms}, C{destuser},
+        and/or C{destgroup} are given, then they are applied to the resulting
+        file.  Microthreaded function."""
+
+    ## shell commands
+
+    def shellCommand(ctxt, command, name=None):
         """Run a command (L{buildbot.framework.interfaces.ICommand}) on
-        the slave.  Returns a deferred which fires when the command
-        completes, or fails if a Python exception occurs.  The command
-        is responsible for collecting any more detailed information."""
+        the slave.  Results of the command are as-yet undefined.  Microthreaded
+        function.
+        
+        If C{name} is specified, it is used as the name of the resulting
+        L{IStepHistory}.
+        """
 
 class ICommand(Interface):
     """
@@ -212,11 +265,13 @@ class IHistoryElt(Interface):
         This tuple is intended to be serialized into a URL.  Microthreaded
         function.  """
 
-    def newBuild(key):
-        """Create a new object providing IBuildHistory.  Microthreaded function."""
+    def newBuild(name):
+        """Create a new object providing IBuildHistory, possibly adjusting the
+        name to be unique.  Microthreaded function."""
 
-    def newStep(key):
-        """Create a new object providing IStepHistory.  Microthreaded function."""
+    def newStep(name):
+        """Create a new object providing IStepHistory, possibly adjusting the
+        name to be unique.  Microthreaded function."""
 
 class IProjectHistory(IHistoryElt):
     """
