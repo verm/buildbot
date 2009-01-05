@@ -19,6 +19,6 @@ import buildbot
 # Every user-visible class or function should be imported here.
 
 from buildbot.framework.slaves import Slave
-from buildbot.framework.process import buildStep, spawnsBuild
+from buildbot.framework import process
 from buildbot.resources.history.ramhistory import RamHistoryManager
 from buildbot.resources.schedulers.dummysched import DummyScheduler

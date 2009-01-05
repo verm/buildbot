@@ -27,15 +27,15 @@ def say(ctxt, what, slenv=None):
     if not slenv: slenv = ctxt.slenv
     yield slenv.shellCommand(ctxt, "echo '%s'" % what)
 
-@buildStep("yell")
+@process.step("yell")
 def yell(ctxt, what):
     print "preparing.."
     yield say(ctxt, what)
     yield say(ctxt, what + "!!")
     print "cleaning up.."
 
-@spawnsBuild("dostuff")
-def dostuff(ctxt):
+@process.build("dostuff")
+def dostuff(ctxt, sourcestamp):
     # TODO: this is *too complex*:
     slenv = (yield buildbot.buildmaster.slaves.getSlaveEnvironment("dostuff-1"))
     ctxt.slenv = (yield buildbot.buildmaster.slaves.getSlaveEnvironment("dostuff-2"))
@@ -52,12 +52,16 @@ def print_histelt(elt, indent=0):
     print "/" + ("/".join((yield elt.getHistoryEltIdPath()))), "(%r)" % (elt,)
     for kidName in (yield elt.getChildEltKeys()):
         yield print_histelt((yield elt.getChildElt(kidName)))
+
+@process.action
+def act(ctxt, sourcestamp):
+    yield dostuff(ctxt, sourcestamp)
     
 sched = addScheduler(
     DummyScheduler(
         name="buildit",
         project=project,
-        action=dostuff
+        action=act
     ))
 
 addSlave(

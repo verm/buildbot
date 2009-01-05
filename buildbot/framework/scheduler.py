@@ -19,21 +19,13 @@ class Scheduler(pools.ServicePoolMember):
     ##
     # Convenience methods for child methods
 
-    def doStartAction(self):
+    def doStartAction(self, sourcestamp):
         """
-        Start the scheduler's action by calling action().  This call is spawned
-        in a separate uThread, so the doStartAction call itself will not raise
-        an exception.  The uThread is returned, so the scheduler can wait for
+        Start the scheduler's action by calling C{self.action(ctxt,
+        sourcestamp)}.  The uThread is returned, so the scheduler can wait for
         or otherwise monitor it for results.
         """
-        def runAction(ctxt):
-            x = (yield self.action(ctxt))
-            # if action() just triggered a build, then wait for it to finish
-            if isinstance(x, uthreads.uThread):
-                yield x.join()
-            # otherwise, action did something else (probably running a bunch of threads),
-            # and is now finished, so this thread is finished, too
-
         hist = interfaces.IHistoryElt(self.project)
         ctxt = process.Context(hist)
-        return uthreads.spawn(runAction(ctxt))
+        th = (yield self.action(ctxt, sourcestamp))
+        raise StopIteration(th)

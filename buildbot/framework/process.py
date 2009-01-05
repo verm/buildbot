@@ -26,7 +26,13 @@ class Context(object):
 ##
 # Useful decorators for process functions
 
-def spawnsBuild(buildName):
+def action(fn):
+    def spawn(ctxt, sourcestamp):
+        th = uthreads.spawn(fn(ctxt, sourcestamp))
+        raise StopIteration(th)
+    return spawn
+
+def build(buildName):
     """
     Decorate a build function to create a new IBuildHistory when
     called.  Used like this::
@@ -48,14 +54,14 @@ def spawnsBuild(buildName):
         return spawnBuild
     return d
 
-def buildStep(stepName):
+def step(stepName):
     """
     Decorate a build function to create a new IStepHistory when called.
     """
     def d(fn):
-        def wrapBuildStep(ctxt, *args, **kwargs):
+        def wrapStep(ctxt, *args, **kwargs):
             subctxt = ctxt.subcontext(
                 hist=(yield ctxt.hist.newStep(stepName)))
             yield fn(subctxt, *args, **kwargs)
-        return wrapBuildStep
+        return wrapStep
     return d
