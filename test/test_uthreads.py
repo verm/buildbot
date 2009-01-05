@@ -38,8 +38,8 @@ class core(TestCase):
             assert mutable == [1], "mutable is %s" % mutable
         return run(main).addCallback(check)
 
-    def test_uthreaded(self):
-        @uthreaded
+    def test_returns_deferred(self):
+        @returns_deferred
         def uthreaded_add(x, y):
             raise StopIteration(x+y)
 

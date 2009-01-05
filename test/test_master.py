@@ -15,7 +15,7 @@ from buildbot.framework.sourcemanager import SourceManager
 class MySourceManager(SourceManager):
     implements(interfaces.ISourceManager)
 
-from buildbot.framework.slave import Slave
+from buildbot.framework.slaves import Slave
 class MySlave(Slave):
     implements(interfaces.ISlave)
 
@@ -38,26 +38,26 @@ class config(TestCase):
     def configToFile(conf):
         return StringIO.StringIO(conf)
 
-    @uthreads.uthreaded
+    @uthreads.returns_deferred
     def testLoadConfig(self):
         bm = master.BuildMaster(".", "cfg.py")
         yield bm.loadConfig(stubclasses + add_one_of_each)
-        assert len(bm.slavePool) == 1
+        assert len(bm.slaves) == 1
         assert len(bm.sourceManagerPool) == 1
         assert len(bm.schedulerPool) == 1
 
-    @uthreads.uthreaded
+    @uthreads.returns_deferred
     def testReloadConfig(self):
         bm = master.BuildMaster(".", "cfg.py")
         yield bm.loadConfig(stubclasses + add_one_of_each)
-        assert len(bm.slavePool) == 1
+        assert len(bm.slaves) == 1
         assert len(bm.sourceManagerPool) == 1
         assert len(bm.schedulerPool) == 1
         yield bm.loadConfig(stubclasses + add_one_of_each + just_sourcemgr)
-        assert len(bm.slavePool) == 1
+        assert len(bm.slaves) == 1
         assert len(bm.sourceManagerPool) == 2
         assert len(bm.schedulerPool) == 1
         yield bm.loadConfig(stubclasses + just_sourcemgr)
-        assert len(bm.slavePool) == 0
+        assert len(bm.slaves) == 0
         assert len(bm.sourceManagerPool) == 1
         assert len(bm.schedulerPool) == 0

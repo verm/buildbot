@@ -10,7 +10,7 @@ class FakePoolMember(pools.PoolMember):
         pools.PoolMember.__init__(self, name)
         self.attr = None
 
-    @uthreads.uthreaded # make this yield a deferred, just to test
+    @uthreads.returns_deferred # make this yield a deferred, just to test
     def stopService(self):
         yield uthreads.sleep(0)
 
@@ -28,7 +28,7 @@ class replacement(TestCase):
         if self.pool and self.pool.running:
             return self.pool.stopService()
 
-    @uthreads.uthreaded
+    @uthreads.returns_deferred
     def testUseNewMembers(self):
         """
         Test simple replacement, using new members.
@@ -56,7 +56,7 @@ class replacement(TestCase):
         assert new_larry is not old_larry
         assert new_larry.attr == "attr", "larry didn't correctly inherit attr from his predecessor"
 
-    @uthreads.uthreaded
+    @uthreads.returns_deferred
     def testUseOldMembers(self):
         """
         Test replacement using old members.

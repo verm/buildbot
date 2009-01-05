@@ -2,4 +2,5 @@ from buildbot.uthreads.core import \
     uSleepQueue, uThread, \
     current_thread, \
     spawn, sleep, \
-    run, uthreaded
+    run, \
+    returns_deferred

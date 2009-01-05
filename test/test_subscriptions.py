@@ -5,7 +5,7 @@ from twisted.internet import defer, reactor
 from buildbot.framework import subscriptions
 
 class t(TestCase):
-    @uthreads.uthreaded
+    @uthreads.returns_deferred
     def testSubscription(self):
         """
         Test things the way they're supposed to work
@@ -27,7 +27,7 @@ class t(TestCase):
         yield uthreads.sleep(0.1)
         assert mutable == [ True, True ], "Mutable is %s" % (mutable,)
 
-    @uthreads.uthreaded
+    @uthreads.returns_deferred
     def dont_testException(self):
         """
         Test an exception in the callback
@@ -49,7 +49,7 @@ class t(TestCase):
 
         yield subs()
 
-    @uthreads.uthreaded
+    @uthreads.returns_deferred
     def testCancel(self):
         """
         Test cancelling a subscription

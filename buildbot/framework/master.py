@@ -101,7 +101,7 @@ class BuildMaster(service.MultiService):
     def stopService(self):
         service.MultiService.stopService(self)
 
-    @uthreads.uthreaded
+    @uthreads.returns_deferred
     def loadConfig(self, configFileForTests=None):
         if configFileForTests:
             f = configFileForTests

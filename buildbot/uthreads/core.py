@@ -339,10 +339,11 @@ def run(callable, *args, **kwargs):
 
     return d
 
-def uthreaded(fn):
+def returns_deferred(fn):
     """
-    A decorator to run the decorated function as a uthread.  Usage::
-        @uthreaded
+    A decorator which makes the underlying microthreaded function return a
+    Deferred.  Used to interface microthreaded functions to Twisted.  Usage::
+        @returns_deferred
         def my_uthreaded_fn(remote, x, y):
             # use microthreaded style inside the function
             yield remote.set_x(x)
