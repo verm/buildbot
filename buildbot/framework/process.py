@@ -15,12 +15,12 @@ class Context(object):
 
     def __init__(self, project):
         self.hist = project
-        self.slenv = None
 
     def subcontext(self, **kwargs):
         ctxt = copy.copy(self)
         for k,v in kwargs.iteritems():
             setattr(ctxt, k, v)
+        ctxt.parent = self
         return ctxt
 
 ##
@@ -47,8 +47,7 @@ def build(buildName):
     def d(fn):
         def spawnBuild(ctxt, *args, **kwargs):
             subctxt = ctxt.subcontext(
-                hist=(yield ctxt.hist.newBuild(buildName)),
-                slenv=None)
+                hist=(yield ctxt.hist.newBuild(buildName)))
             th = uthreads.spawn(fn(subctxt, *args, **kwargs))
             raise StopIteration(th)
         return spawnBuild

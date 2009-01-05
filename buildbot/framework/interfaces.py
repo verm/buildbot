@@ -203,10 +203,6 @@ class IContext(Interface):
 
     parent = Attribute("""Parent context, or None if this is the top level""")
     hist = Attribute("""Current L{IHistoryElt} provider""")
-    slave = Attribute("""Default slave on which to run commands""")
-
-    # TODO:
-    # props = Attribute("""Accumulated properties for this build""")
 
     def subcontext(hist=None):
         """Create a shallow copy of this context object for use in a sub-step
