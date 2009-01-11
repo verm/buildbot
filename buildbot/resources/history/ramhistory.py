@@ -16,15 +16,18 @@ class RamHistoryManager(history.HistoryManager):
     def __init__(self, name="history"):
         self.projects = {}
 
+    @uthreads.uthreaded
     def getElementByIdPath(self, path):
         elt, path = self.projects[path[0]], path[1:]
         while path:
             elt, path = elt.getChildElt(path[0]), path[1:]
         return elt
 
+    @uthreads.uthreaded
     def getProjectNames(self):
         return self.projects.keys()
 
+    @uthreads.uthreaded
     def getProject(self, name, create=False):
         if create and not self.projects.has_key(name):
             self.projects[name] = ProjectHistory((name,))
@@ -38,18 +41,23 @@ class HistoryElt(history.HistoryElt):
         self.childEltsKeys = []
         self.childElts = {}
 
+    @uthreads.uthreaded
     def getParentElt(self):
         return self.historyEltIdPath[:-1]
 
+    @uthreads.uthreaded
     def getChildElt(self, key):
         return self.childElts[key]
 
+    @uthreads.uthreaded
     def getChildEltKeys(self):
         return self.childEltsKeys
 
+    @uthreads.uthreaded
     def getHistoryEltIdPath(self):
         return self.historyEltIdPath
 
+    @uthreads.uthreaded
     def newBuild(self, name):
         key = (yield self.uniqueName(name))
         n = BuildHistory(self.historyEltIdPath + (key,))
@@ -57,6 +65,7 @@ class HistoryElt(history.HistoryElt):
         self.childElts[key] = n
         raise StopIteration(n)
 
+    @uthreads.uthreaded
     def newStep(self, name):
         key = (yield self.uniqueName(name))
         n = StepHistory(self.historyEltIdPath + (key,))
@@ -83,6 +92,7 @@ class StepHistory(HistoryElt):
     def __init__(self, eltidpath):
         HistoryElt.__init__(self, eltidpath)
 
+    @uthreads.uthreaded
     def newLogfile(self, name):
         assert not self.childElts.has_key(key)
         n = HistoryLogfile(self.historyEltIdPath + (key,))
@@ -95,5 +105,6 @@ class HistoryLogfile(HistoryElt):
     def __init__(self, eltidpath):
         HistoryElt.__init__(self, eltidpath)
 
+    @uthreads.uthreaded
     def getFilename(self):
         pass # TODO!

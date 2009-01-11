@@ -29,7 +29,7 @@ class Context(object):
 def action(fn):
     def spawn(ctxt, sourcestamp):
         th = uthreads.spawn(fn(ctxt, sourcestamp))
-        raise StopIteration(th)
+        return th
     return spawn
 
 def build(buildName):
@@ -45,6 +45,7 @@ def build(buildName):
       archthreads = [ archtest(arch) for arch in architectures ]
     """
     def d(fn):
+        @uthreads.uthreaded
         def spawnBuild(ctxt, *args, **kwargs):
             subctxt = ctxt.subcontext(
                 hist=(yield ctxt.hist.newBuild(buildName)))
@@ -58,6 +59,7 @@ def step(stepName):
     Decorate a build function to create a new IStepHistory when called.
     """
     def d(fn):
+        @uthreads.uthreaded
         def wrapStep(ctxt, *args, **kwargs):
             subctxt = ctxt.subcontext(
                 hist=(yield ctxt.hist.newStep(stepName)))

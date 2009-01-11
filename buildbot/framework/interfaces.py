@@ -1,4 +1,5 @@
 from zope.interface import Interface, Attribute
+from buildbot import uthreads
 
 class ISubscription(Interface):
     """
@@ -96,6 +97,7 @@ class ISlaveManager(Interface):
     will wait for unavailable slaves.
     """
 
+    @uthreads.uthreaded
     def find(filter=None, wait=True):
         """Find a slave to build on.  C{filter} is a function taking an
         L{ISlave} provider and returning True if the slave is acceptable.  If
@@ -111,6 +113,7 @@ class ISlave(Interface):
     A Slave manages the connection from a remote machine.
     """
 
+    @uthreads.uthreaded
     def getSlaveEnvoronment(name):
         """Get an L{ISlaveSlaveEnvironment} provider with the given name.  The
         name is used to choose the initial working directory, and should not
@@ -130,30 +133,36 @@ class ISlaveEnvironment(Interface):
 
     ## filesystem operations
 
+    @uthreads.uthreaded
     def chdir(ctxt, newdir, baseRelative=False):
         """Change the "current directory" for this slave environment.  If
         C{baseRelative} is true, then newdir is interpreted with respect to
         the initial/base directory.  Microthreaded function."""
 
+    @uthreads.uthreaded
     def rename(ctxt, srcfilename, destfilename):
         """Use the L{os.rename} function to rename C{srcfilename} to
         C{destfilename}.  This is subject to the usual restrictions of
         L{os.rename} on the slave system.  Microthreaded function."""
 
+    @uthreads.uthreaded
     def remove(ctxt, filename, recursive=False):
         """Remove C{filename}, optionally recursively removing whole
         directories.  Microthreaded function."""
 
+    @uthreads.uthreaded
     def mkdir(ctxt, filename):
         """Create the directory C{filename}, including any intervening
         directories.  Microthreaded function."""
 
     ## environment
 
+    @uthreads.uthreaded
     def getEnv(ctxt):
         """Return a dictionary containing all environment variables in the
         slave environment.  Microthreaded function."""
 
+    @uthreads.uthreaded
     def setEnv(ctxt, **kwargs):
         """Update environment variables on the slave, e.g.,::
              slenv.setEnv(PATH="/usr/bin", HOME="/home/foo")
@@ -162,10 +171,12 @@ class ISlaveEnvironment(Interface):
 
     ## file transfers
 
+    @uthreads.uthreaded
     def upload(ctxt, srcfilename, destfile):
         """Upload C{srcfilename} from the slave, writing the data to the
         file-like object C{destfile}.  Microthreaded function."""
 
+    @uthreads.uthreaded
     def download(ctxt, srcfile, destfilename,
                  destperms=None, destuser=None, destgroup=None):
         """Download data from th file-like object C{srcfile} to the slave,
@@ -175,6 +186,7 @@ class ISlaveEnvironment(Interface):
 
     ## shell commands
 
+    @uthreads.uthreaded
     def shellCommand(ctxt, command, name=None):
         """Run a command (L{buildbot.framework.interfaces.ICommand}) on
         the slave.  Results of the command are as-yet undefined.  Microthreaded
@@ -223,12 +235,15 @@ class IHistoryManager(Interface):
     can be loaded from backend storage systems without blocking.
     """
 
+    @uthreads.uthreaded
     def getElementByIdPath(path):
         """Get an arbitrary element by history element ID path.  Microthreaded function."""
 
+    @uthreads.uthreaded
     def getProjectNames():
         """Get a list of all project names.  Microthreaded function."""
 
+    @uthreads.uthreaded
     def getProject(name, create=False):
         """Get an IProjectHistory object, creating a new one if not found and
         create is True.  Microthreaded function."""
@@ -243,17 +258,21 @@ class IHistoryElt(Interface):
 
     historyEltId = Attribute("URL-safe name for the element")
 
+    @uthreads.uthreaded
     def getParentElt():
         """Get this object's parent IHistoryElt.  Microthreaded function."""
 
+    @uthreads.uthreaded
     def getChildElt(key):
         """Get the indicated child of this IHistoryElt; keys are arbitrary,
         short, URL-safe strings.  Microthreaded function."""
 
+    @uthreads.uthreaded
     def getChildEltKeys():
         """Return a list of keys for child elements of this IHistoryElt.
         Microthreaded function."""
 
+    @uthreads.uthreaded
     def getHistoryEltIdPath():
         """Return a tuple of strings which can be used to navigate from the
         buildmaster to this IHistoryElt.  The first item of the tuple names an
@@ -261,10 +280,12 @@ class IHistoryElt(Interface):
         This tuple is intended to be serialized into a URL.  Microthreaded
         function.  """
 
+    @uthreads.uthreaded
     def newBuild(name):
         """Create a new object providing IBuildHistory, possibly adjusting the
         name to be unique.  Microthreaded function."""
 
+    @uthreads.uthreaded
     def newStep(name):
         """Create a new object providing IStepHistory, possibly adjusting the
         name to be unique.  Microthreaded function."""
@@ -300,6 +321,7 @@ class IStepHistory(IHistoryElt):
 
     # TODO: blobs
 
+    @uthreads.uthreaded
     def newLogfile(name):
         """Create a new object providing IHistoryLogfile.  Microthreaded function."""
 
@@ -308,5 +330,6 @@ class IHistoryLogfile(Interface):
     Represents some textual output from a buildstep
     """
 
+    @uthreads.uthreaded
     def getFilename():
         """get the filename of the logfile on disk"""

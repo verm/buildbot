@@ -25,6 +25,7 @@ class DummyScheduler(scheduler.Scheduler):
         if self.timer:
             self.timer.cancel()
 
+    @uthreads.uthreaded
     def doBuild(self):
         self.timer = None
         def waitforit():

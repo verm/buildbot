@@ -15,6 +15,7 @@ class SlaveManager(service.Service, pools.Pool):
     def __init__(self):
         pools.Pool.__init__(self, useNewMembers=False)
 
+    @uthreads.uthreaded
     def getSlaveEnvironment(self, name, filter=None, wait=True):
         if filter is None: filter = lambda x : True
         candidates = [
@@ -34,6 +35,7 @@ class SlaveManager(service.Service, pools.Pool):
         assert interfaces.ISlaveEnvironment.providedBy(slenv)
         raise StopIteration(slenv)
 
+    @uthreads.uthreaded
     def stopMember(self, slave):
         pass
         # slave.forceDisconnect()

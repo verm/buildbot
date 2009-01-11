@@ -19,6 +19,7 @@ class Scheduler(pools.ServicePoolMember):
     ##
     # Convenience methods for child methods
 
+    @uthreads.uthreaded
     def doStartAction(self, sourcestamp):
         """
         Start the scheduler's action by calling C{self.action(ctxt,

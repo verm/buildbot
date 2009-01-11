@@ -163,22 +163,22 @@ class BuildMaster(service.MultiService):
         self.slaves.markOld()
         for slave in new_slaves:
             yield self.slaves.addMember(slave)
-        self.slaves.removeOld()
+        yield self.slaves.removeOld()
 
         log.msg("updating source managers")
         self.sourceManagerPool.markOld()
         for srcmgr in new_srcmgrs:
             yield self.sourceManagerPool.addMember(srcmgr)
-        self.sourceManagerPool.removeOld()
+        yield self.sourceManagerPool.removeOld()
 
         log.msg("updating schedulers")
         self.schedulerPool.markOld()
         for sched in new_scheds:
             yield self.schedulerPool.addMember(sched)
-        self.schedulerPool.removeOld()
+        yield self.schedulerPool.removeOld()
 
         log.msg("updating history managers")
         self.historyPool.markOld()
         for histmgr in new_histmgrs:
             yield self.historyPool.addMember(histmgr)
-        self.historyPool.removeOld()
+        yield self.historyPool.removeOld()

@@ -19,6 +19,7 @@ class HistoryElt(object):
     implement L{interfaces.IHistoryElt}, so it does not call C{implements()}
     for that interface.
     """
+    @uthreads.uthreaded
     def uniqueName(self, name):
         """Generate a unqiue name for a child element by appending a dash and a
         number.  Microthreaded function."""

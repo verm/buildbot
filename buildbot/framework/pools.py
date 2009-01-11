@@ -119,6 +119,7 @@ class Pool(object):
         """
         return self.poolmembers[name]
 
+    @uthreads.uthreaded
     def addMember(self, newmember):
         """
         Add a PoolMember to this pool.  The member should not be started.
@@ -146,6 +147,7 @@ class Pool(object):
         self.poolmembers[name] = newmember
         self.startMember(newmember)
 
+    @uthreads.uthreaded
     def removeOld(self):
         """
         Remove any members of this pool that are still marked as "old".

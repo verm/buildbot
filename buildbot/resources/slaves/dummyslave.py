@@ -23,6 +23,7 @@ class DummySlaveEnvironment(object):
 
     ## filesystem operations
 
+    @uthreads.uthreaded
     def chdir(self, ctxt, newdir, baseRelative=False):
         # TODO add IStepHistory
         if baseRelative:
@@ -31,10 +32,12 @@ class DummySlaveEnvironment(object):
             self.cwd = os.path.join(self.cwd, newdir)
         print "changing directory to '%s'" % self.cwd
     
+    @uthreads.uthreaded
     def rename(self, ctxt, srcfilename, destfilename):
         # TODO add IStepHistory
         os.rename(srcfilename, destfilename)
     
+    @uthreads.uthreaded
     def remove(self, ctxt, filename, recursive=False):
         # TODO add IStepHistory
         if recursive:
@@ -42,21 +45,25 @@ class DummySlaveEnvironment(object):
         else:
             os.remove(filename)
     
+    @uthreads.uthreaded
     def mkdir(self, ctxt, filename):
         # TODO add IStepHistory
         os.makedirs(filename)
     
     ## environment
 
+    @uthreads.uthreaded
     def getEnv(self, ctxt):
         return self.env.copy()
 
+    @uthreads.uthreaded
     def setEnv(self, ctxt, **kwargs):
         # TODO add IStepHistory
         self.env.update(kwargs)
 
     ## file transfers
 
+    @uthreads.uthreaded
     def upload(self, ctxt, srcfilename, destfile):
         # TODO add IStepHistory
         src = open(srcfilename, "r")
@@ -66,6 +73,7 @@ class DummySlaveEnvironment(object):
             if d == '': break
             destfile.write(d)
 
+    @uthreads.uthreaded
     def download(self, ctxt, srcfile, destfilename,
                  destperms=None, destuser=None, destgroup=None):
         # TODO add IStepHistory
@@ -83,6 +91,7 @@ class DummySlaveEnvironment(object):
 
     ## shell commands
 
+    @uthreads.uthreaded
     def shellCommand(self, ctxt, command, name=None):
         if name is None: name = command.split()[0]
         histelt = (yield ctxt.hist.newStep(name))
@@ -96,6 +105,7 @@ class DummySlave(slaves.Slave):
         slaves.Slave.__init__(self, name, password)
         self.envs = weakref.WeakValueDictionary()
 
+    @uthreads.uthreaded
     def getSlaveEnvironment(self, name):
         # TODO: make this an exception, as it will probably happen often
         assert name not in self.envs, \
