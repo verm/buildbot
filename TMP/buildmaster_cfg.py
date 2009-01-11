@@ -45,13 +45,7 @@ def dostuff(ctxt, sourcestamp):
     yield slenv.shellCommand(ctxt, "pwd")
 
     print "history:"
-    yield print_histelt(project)
-
-def print_histelt(elt, indent=0):
-    s = yield elt.getHistoryEltIdPath()
-    print "/" + ("/".join((yield elt.getHistoryEltIdPath()))), "(%r)" % (elt,)
-    for kidName in (yield elt.getChildEltKeys()):
-        yield print_histelt((yield elt.getChildElt(kidName)))
+    yield history.dump()
 
 @process.action
 def act(ctxt, sourcestamp):

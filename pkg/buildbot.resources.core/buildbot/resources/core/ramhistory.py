@@ -33,6 +33,24 @@ class RamHistoryManager(history.HistoryManager):
             self.projects[name] = ProjectHistory((name,))
         return self.projects[name]
 
+    @uthreads.uthreaded
+    def dump(self):
+        """Dump the history in a nice ASCII-art format"""
+        def print_histelt(prefix, elt):
+            kidNames = (yield elt.getChildEltKeys())
+            if not kidNames: return
+            for kidName in kidNames:
+                kid = (yield elt.getChildElt(kidName))
+                print "%s +-%s (%r)" % (prefix, kidName, kid)
+                if kidName is kidNames[-1]:
+                    yield print_histelt(prefix+"   ", kid)
+                else:
+                    yield print_histelt(prefix+" | ", kid)
+        for name, project in self.projects.items():
+            print "=== %s" % name
+            yield print_histelt('', project)
+
+
 class HistoryElt(history.HistoryElt):
     implements(interfaces.IHistoryElt)
 
