@@ -25,11 +25,7 @@ class DummyScheduler(scheduler.Scheduler):
         if self.timer:
             self.timer.cancel()
 
-    @uthreads.uthreaded
+    @uthreads.returns_deferred
     def doBuild(self):
         self.timer = None
-        def waitforit():
-            th = (yield self.doStartAction(sourcestamp=None)) # no SourceStamps yet
-            yield th.join()
-            print "thread done"
-        uthreads.spawn(waitforit())
+        yield self.doStartAction(sourcestamp=None)
