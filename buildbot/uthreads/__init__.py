@@ -3,4 +3,4 @@ from buildbot.uthreads.core import \
     current_thread, \
     spawn, sleep, \
     run, \
-    returns_deferred
+    returns_deferred, uthreaded
