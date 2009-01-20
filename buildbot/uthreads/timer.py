@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import os
 import sys
 import time
@@ -5,7 +7,7 @@ import types
 
 from twisted.internet import defer, reactor
 
-from buildbot.uthreads import *
+from .core import uThread, spawn
 
 __all__ = [
     'Timer',
