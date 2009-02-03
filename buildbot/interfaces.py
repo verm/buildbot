@@ -4,7 +4,7 @@
 Define the interfaces that are implemented by various buildbot classes.
 """
 
-from zope.interface import Interface
+from zope.interface import Interface, Attribute
 
 # import sub-packages' interfaces
 from buildbot.jobs.interfaces import *
@@ -16,6 +16,8 @@ class NoSlaveError(Exception):
 class BuilderInUseError(Exception):
     pass
 class BuildSlaveTooOldError(Exception):
+    pass
+class LatentBuildSlaveFailedToSubstantiate(Exception):
     pass
 
 # other exceptions
@@ -47,7 +49,7 @@ class IScheduler(Interface):
     """I watch for Changes in the source tree and decide when to trigger
     Builds. I create BuildSet objects and submit them to the BuildMaster. I
     am a service, and the BuildMaster is always my parent.
-    
+
     @ivar properties: properties to be applied to all builds started by this
     scheduler
     @type properties: L<buildbot.process.properties.Properties>
@@ -83,6 +85,16 @@ class IUpstreamScheduler(Interface):
     def listBuilderNames():
         """Return a list of strings indicating the Builders that this
         Scheduler might feed."""
+
+class IDownstreamScheduler(Interface):
+    """This marks an IScheduler to be listening to other schedulers.
+    On reconfigs, these might get notified to check if their upstream
+    scheduler are stil the same."""
+
+    def checkUpstreamScheduler():
+        """Check if the upstream scheduler is still alive, and if not,
+        get a new upstream object from the master."""
+
 
 class ISourceStamp(Interface):
     """
@@ -448,7 +460,7 @@ class IBuildStatus(Interface):
     def getBuilder():
         """
         Return the BuilderStatus that owns this build.
-        
+
         @rtype: implementor of L{IBuilderStatus}
         """
 
@@ -1088,3 +1100,32 @@ class ILogObserver(Interface):
 class IBuildSlave(Interface):
     # this is a marker interface for the BuildSlave class
     pass
+
+class ILatentBuildSlave(IBuildSlave):
+    """A build slave that is not always running, but can run when requested.
+    """
+    substantiated = Attribute('Substantiated',
+                              'Whether the latent build slave is currently '
+                              'substantiated with a real instance.')
+
+    def substantiate():
+        """Request that the slave substantiate with a real instance.
+
+        Returns a deferred that will callback when a real instance has
+        attached."""
+
+    # there is an insubstantiate too, but that is not used externally ATM.
+
+    def buildStarted(sb):
+        """Inform the latent build slave that a build has started.
+
+        ``sb`` is a LatentSlaveBuilder as defined in buildslave.py.  The sb
+        is the one for whom the build started.
+        """
+
+    def buildFinished(sb):
+        """Inform the latent build slave that a build has finished.
+
+        ``sb`` is a LatentSlaveBuilder as defined in buildslave.py.  The sb
+        is the one for whom the build finished.
+        """

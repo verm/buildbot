@@ -77,10 +77,7 @@ class BuildRequest:
         self.status = BuildRequestStatus(source, builderName)
 
     def canBeMergedWith(self, other):
-        # only merge requests with the same reason
-        # otherwise, there's no way to force repeated builds of the same source
-        return (self.reason == other.reason and
-                self.source.canBeMergedWith(other.source))
+        return self.source.canBeMergedWith(other.source)
 
     def mergeWith(self, others):
         return self.source.mergeWith([o.source for o in others])
@@ -407,10 +404,13 @@ class Build:
             step.setDefaultWorkdir(self.workdir)
             name = step.name
             count = 1
-            while name in stepnames and count < 100:
+            while name in stepnames and count < 1000:
                 count += 1
                 name = step.name + "_%d" % count
-            if name in stepnames:
+            if count == 1000:
+                raise RuntimeError("reached 1000 steps with base name" + \
+                                   "%s, bailing" % step.name)
+            elif name in stepnames:
                 raise RuntimeError("duplicate step '%s'" % step.name)
             step.name = name
             stepnames.append(name)

@@ -172,7 +172,7 @@ class Scheduler(BaseUpstreamScheduler):
                 (self, time.strftime("%H:%M:%S", time.localtime(when))))
         now = util.now()
         if when < now:
-            when = now + 1
+            when = now
         if self.timer:
             self.timer.cancel()
         self.timer = reactor.callLater(when - now, self.fireTimer)
@@ -307,8 +307,9 @@ class AnyBranchScheduler(BaseUpstreamScheduler):
 class Dependent(BaseUpstreamScheduler):
     """This scheduler runs some set of 'downstream' builds when the
     'upstream' scheduler has completed successfully."""
+    implements(interfaces.IDownstreamScheduler)
 
-    compare_attrs = ('name', 'upstream', 'builders', 'properties')
+    compare_attrs = ('name', 'upstream', 'builderNames', 'properties')
 
     def __init__(self, name, upstream, builderNames, properties={}):
         assert interfaces.IUpstreamScheduler.providedBy(upstream)
@@ -337,7 +338,27 @@ class Dependent(BaseUpstreamScheduler):
                     properties=self.properties)
         self.submitBuildSet(bs)
 
+    def checkUpstreamScheduler(self):
+        # find our *active* upstream scheduler (which may not be self.upstream!) by name
+        up_name = self.upstream.name
+        upstream = None
+        for s in self.parent.allSchedulers():
+            if s.name == up_name and interfaces.IUpstreamScheduler.providedBy(s):
+                upstream = s
+        if not upstream:
+            log.msg("ERROR: Couldn't find upstream scheduler of name <%s>" %
+                up_name)
 
+        # if it's already correct, we're good to go
+        if upstream is self.upstream:
+            return
+
+        # otherwise, associate with the new upstream.  We also keep listening
+        # to the old upstream, in case it's in the middle of a build
+        upstream.subscribeToSuccessfulBuilds(self.upstreamBuilt)
+        self.upstream = upstream
+        log.msg("Dependent <%s> connected to new Upstream <%s>" %
+                (self.name, up_name))
 
 class Periodic(BaseUpstreamScheduler):
     """Instead of watching for Changes, this Scheduler can just start a build
@@ -415,15 +436,24 @@ class Nightly(BaseUpstreamScheduler):
     either of them. All time values are compared against the tuple returned
     by time.localtime(), so month and dayOfMonth numbers start at 1, not
     zero. dayOfWeek=0 is Monday, dayOfWeek=6 is Sunday.
+
+    onlyIfChanged functionality
+    s = Nightly('nightly', ['builder1', 'builder2'],
+                hour=3, minute=0, onlyIfChanged=True)
+    When the flag is True (False by default), the build is trigged if
+    the date matches and if the branch has changed
+
+    fileIsImportant parameter is implemented as defined in class Scheduler
     """
 
     compare_attrs = ('name', 'builderNames',
                      'minute', 'hour', 'dayOfMonth', 'month',
-                     'dayOfWeek', 'branch', 'properties')
+                     'dayOfWeek', 'branch', 'onlyIfChanged',
+                     'fileIsImportant', 'properties')
 
     def __init__(self, name, builderNames, minute=0, hour='*',
                  dayOfMonth='*', month='*', dayOfWeek='*',
-                 branch=None, properties={}):
+                 branch=None, fileIsImportant=None, onlyIfChanged=False, properties={}):
         # Setting minute=0 really makes this an 'Hourly' scheduler. This
         # seemed like a better default than minute='*', which would result in
         # a build every 60 seconds.
@@ -435,10 +465,18 @@ class Nightly(BaseUpstreamScheduler):
         self.month = month
         self.dayOfWeek = dayOfWeek
         self.branch = branch
+        self.onlyIfChanged = onlyIfChanged
         self.delayedRun = None
         self.nextRunTime = None
         self.reason = ("The Nightly scheduler named '%s' triggered this build"
                        % name)
+
+        self.importantChanges   = [] 
+        self.unimportantChanges = [] 
+        self.fileIsImportant    = None 
+        if fileIsImportant: 
+            assert callable(fileIsImportant) 
+            self.fileIsImportant = fileIsImportant 
 
     def addTime(self, timetuple, secs):
         return time.localtime(time.mktime(timetuple)+secs)
@@ -529,16 +567,51 @@ class Nightly(BaseUpstreamScheduler):
         # Schedule the next run
         self.setTimer()
 
-        # And trigger a build
-        bs = buildset.BuildSet(self.builderNames,
-                               SourceStamp(branch=self.branch),
-                               self.reason,
-                               properties=self.properties)
-        self.submitBuildSet(bs)
+        if  self.onlyIfChanged:
+            if len(self.importantChanges) > 0: 
+                changes = self.importantChanges + self.unimportantChanges 
+                # And trigger a build 
+                log.msg("Nightly Scheduler <%s>: triggering build" % self.name) 
+                bs = buildset.BuildSet(self.builderNames,
+                                       SourceStamp(changes=changes),
+                                       self.reason,
+                                       properties=self.properties)
+                self.submitBuildSet(bs)
+                # Reset the change lists 
+                self.importantChanges = [] 
+                self.unimportantChanges = []
+            else: 
+                log.msg("Nightly Scheduler <%s>: skipping build - No important change" % self.name)
+        else:
+            # And trigger a build
+            bs = buildset.BuildSet(self.builderNames,
+                                   SourceStamp(branch=self.branch),
+                                   self.reason,
+                                   properties=self.properties)
+            self.submitBuildSet(bs) 
 
     def addChange(self, change):
-        pass
-
+        if  self.onlyIfChanged:
+            if change.branch != self.branch: 
+                log.msg("Nightly Scheduler <%s>: ignoring change %d on off-branch %s" % (self.name, change.revision, change.branch)) 
+                return 
+            if not self.fileIsImportant:
+                self.addImportantChange(change) 
+            elif self.fileIsImportant(change): 
+                self.addImportantChange(change) 
+            else: 
+                self.addUnimportantChange(change)
+        else:
+            log.msg("Nightly Scheduler <%s>: no add change" % self.name)
+            pass
+ 
+    def addImportantChange(self, change):
+        log.msg("Nightly Scheduler <%s>: change %s from %s is important, adding it" % (self.name, change.revision, change.who)) 
+        self.importantChanges.append(change) 
+ 
+    def addUnimportantChange(self, change):
+        log.msg("Nightly Scheduler <%s>: change %s from %s is not important, adding it" % (self.name, change.revision, change.who)) 
+        self.unimportantChanges.append(change) 
 
 
 class TryBase(BaseScheduler):
@@ -557,6 +630,21 @@ class TryBase(BaseScheduler):
         # Try schedulers ignore Changes
         pass
 
+    def processBuilderList(self, builderNames):
+        # self.builderNames is the configured list of builders
+        # available for try.  If the user supplies a list of builders,
+        # it must be restricted to the configured list.  If not, build
+        # on all of the configured builders.
+        if builderNames:
+            for b in builderNames:
+                if not b in self.builderNames:
+                    log.msg("%s got with builder %s" % (self, b))
+                    log.msg(" but that wasn't in our list: %s"
+                            % (self.builderNames,))
+                    return []
+        else:
+            builderNames = self.builderNames
+        return builderNames
 
 class BadJobfile(Exception):
     pass
@@ -639,18 +727,10 @@ class Try_Jobdir(TryBase):
             log.msg("%s reports a bad jobfile in %s" % (self, filename))
             log.err()
             return
-        # compare builderNames against self.builderNames
-        # TODO: think about this some more.. why bother restricting it?
-        # perhaps self.builderNames should be used as the default list
-        # instead of being used as a restriction?
-        for b in builderNames:
-            if not b in self.builderNames:
-                log.msg("%s got jobfile %s with builder %s" % (self,
-                                                               filename, b))
-                log.msg(" but that wasn't in our list: %s"
-                        % (self.builderNames,))
-                return
-
+        # Validate/fixup the builder names.
+        builderNames = self.processBuilderList(builderNames)
+        if not builderNames:
+            return
         reason = "'try' job"
         bs = buildset.BuildSet(builderNames, ss, reason=reason, 
                     bsid=bsid, properties=self.properties)
@@ -694,12 +774,10 @@ class Try_Userpass_Perspective(pbutil.NewCredPerspective):
     def perspective_try(self, branch, revision, patch, builderNames, properties={}):
         log.msg("user %s requesting build on builders %s" % (self.username,
                                                              builderNames))
-        for b in builderNames:
-            if not b in self.parent.builderNames:
-                log.msg("%s got job with builder %s" % (self, b))
-                log.msg(" but that wasn't in our list: %s"
-                        % (self.parent.builderNames,))
-                return
+        # Validate/fixup the builder names.
+        builderNames = self.parent.processBuilderList(builderNames)
+        if not builderNames:
+            return
         ss = SourceStamp(branch, revision, patch)
         reason = "'try' job from user %s" % self.username
 

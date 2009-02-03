@@ -3,6 +3,7 @@
 import os
 from stat import ST_MODE
 from twisted.trial import unittest
+from buildbot.process.buildstep import WithProperties
 from buildbot.steps.transfer import FileUpload, FileDownload
 from buildbot.test.runutils import StepTester
 from buildbot.status.builder import SUCCESS, FAILURE
@@ -193,6 +194,50 @@ class Upload(StepTester, unittest.TestCase):
         d.addCallback(_checkUpload)
         return d
 
+    def testWorkdir(self):
+        self.slavebase = "Upload.testWorkdir.slave"
+        self.masterbase = "Upload.testWorkdir.master"
+        sb = self.makeSlaveBuilder()
+
+        self.workdir = "mybuild"        # override default in StepTest
+        full_workdir = os.path.join(
+            self.slavebase, self.slavebuilderbase, self.workdir)
+        os.mkdir(full_workdir)
+
+        masterdest = os.path.join(self.masterbase, "dest.txt")
+        
+        step = self.makeStep(FileUpload,
+                             slavesrc="source.txt",
+                             masterdest=masterdest)
+
+        # Testing that the FileUpload's workdir is set when makeStep()
+        # calls setDefaultWorkdir() is actually enough; carrying on and
+        # making sure the upload actually succeeds is pure gravy.
+        self.failUnlessEqual(self.workdir, step.workdir)
+
+        slavesrc = os.path.join(full_workdir, "source.txt")
+        open(slavesrc, "w").write("upload me\n")
+
+        def _checkUpload(results):
+            self.failUnlessEqual(results, SUCCESS)
+            self.failUnless(os.path.isfile(masterdest))
+
+        d = self.runStep(step)
+        d.addCallback(_checkUpload)
+        return d
+
+    def testWithProperties(self):
+        # test that workdir can be a WithProperties object
+        self.slavebase = "Upload.testWithProperties.slave"
+        self.masterbase = "Upload.testWithProperties.master"
+        sb = self.makeSlaveBuilder()
+
+        step = self.makeStep(FileUpload,
+                             slavesrc="src.txt",
+                             masterdest="dest.txt")
+        step.workdir = WithProperties("build.%s", "buildnumber")
+
+        self.failUnlessEqual(step._getWorkdir(), "build.1")
 
 class Download(StepTester, unittest.TestCase):
 
@@ -359,6 +404,33 @@ class Download(StepTester, unittest.TestCase):
         d.addCallback(_checkDownload)
         return d
 
+    def testWorkdir(self):
+        self.slavebase = "Download.testWorkdir.slave"
+        self.masterbase = "Download.testWorkdir.master"
+        sb = self.makeSlaveBuilder()
+
+        # As in Upload.testWorkdir(), it's enough to test that makeStep()'s
+        # call of setDefaultWorkdir() actually sets step.workdir.
+        self.workdir = "mybuild"
+        step = self.makeStep(FileDownload,
+                             mastersrc="foo",
+                             slavedest="foo")
+        self.failUnlessEqual(step.workdir, self.workdir)
+
+    def testWithProperties(self):
+        # test that workdir can be a WithProperties object
+        self.slavebase = "Download.testWithProperties.slave"
+        self.masterbase = "Download.testWithProperties.master"
+        sb = self.makeSlaveBuilder()
+
+        step = self.makeStep(FileDownload,
+                             mastersrc="src.txt",
+                             slavedest="dest.txt")
+        step.workdir = WithProperties("build.%s", "buildnumber")
+
+        self.failUnlessEqual(step._getWorkdir(), "build.1")
+
+        
 
 # TODO:
 #  test relative paths, ~/paths

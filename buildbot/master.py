@@ -62,6 +62,10 @@ class BotMaster(service.MultiService):
         # self.locks holds the real Lock instances
         self.locks = {}
 
+        # self.mergeRequests is the callable override for merging build
+        # requests
+        self.mergeRequests = None
+
     # these four are convenience functions for testing
 
     def waitUntilBuilderAttached(self, name):
@@ -203,6 +207,15 @@ class BotMaster(service.MultiService):
         builders.sort(cmp=_sortfunc)
         for b in builders:
             b.maybeStartBuild()
+
+    def shouldMergeRequests(self, builder, req1, req2):
+        """Determine whether two BuildRequests should be merged for
+        the given builder.
+
+        """
+        if self.mergeRequests is not None:
+            return self.mergeRequests(builder, req1, req2)
+        return req1.canBeMergedWith(req2)
 
     def getPerspective(self, slavename):
         return self.slaves[slavename]
@@ -510,10 +523,10 @@ class BuildMaster(service.MultiService, styles.Versioned):
 
         known_keys = ("bots", "slaves",
                       "sources", "change_source",
-                      "schedulers", "builders",
-                      "slavePortnum", "debugPassword", "manhole",
-                      "status", "projectName", "projectURL", "buildbotURL",
-                      "properties"
+                      "schedulers", "builders", "mergeRequests", 
+                      "slavePortnum", "debugPassword", "logCompressionLimit",
+                      "manhole", "status", "projectName", "projectURL",
+                      "buildbotURL", "properties"
                       )
         for k in config.keys():
             if k not in known_keys:
@@ -542,6 +555,13 @@ class BuildMaster(service.MultiService, styles.Versioned):
             projectURL = config.get('projectURL')
             buildbotURL = config.get('buildbotURL')
             properties = config.get('properties', {})
+            logCompressionLimit = config.get('logCompressionLimit')
+            if logCompressionLimit is not None and not \
+                    isinstance(logCompressionLimit, int):
+                raise ValueError("logCompressionLimit needs to be bool or int")
+            mergeRequests = config.get('mergeRequests')
+            if mergeRequests is not None and not callable(mergeRequests):
+                raise ValueError("mergeRequests must be a callable")
 
         except KeyError, e:
             log.msg("config dictionary is missing a required parameter")
@@ -583,9 +603,10 @@ class BuildMaster(service.MultiService, styles.Versioned):
 
         # do some validation first
         for s in slaves:
-            assert isinstance(s, BuildSlave)
+            assert interfaces.IBuildSlave.providedBy(s)
             if s.slavename in ("debug", "change", "status"):
-                raise KeyError, "reserved name '%s' used for a bot" % s.slavename
+                raise KeyError(
+                    "reserved name '%s' used for a bot" % s.slavename)
         if config.has_key('interlocks'):
             raise KeyError("c['interlocks'] is no longer accepted")
 
@@ -694,9 +715,13 @@ class BuildMaster(service.MultiService, styles.Versioned):
         self.projectName = projectName
         self.projectURL = projectURL
         self.buildbotURL = buildbotURL
-        
+
         self.properties = Properties()
         self.properties.update(properties, self.configFileName)
+        if logCompressionLimit is not None:
+            self.status.logCompressionLimit = logCompressionLimit
+        if mergeRequests is not None:
+            self.botmaster.mergeRequests = mergeRequests
 
         # self.slaves: Disconnect any that were attached and removed from the
         # list. Update self.checker with the new list of passwords, including
@@ -793,10 +818,21 @@ class BuildMaster(service.MultiService, styles.Versioned):
         added = [s for s in newschedulers if s not in oldschedulers]
         dl = [defer.maybeDeferred(s.disownServiceParent) for s in removed]
         def addNewOnes(res):
+            log.msg("adding %d new schedulers, removed %d" % 
+                    (len(added), len(dl)))
             for s in added:
                 s.setServiceParent(self)
         d = defer.DeferredList(dl, fireOnOneErrback=1)
         d.addCallback(addNewOnes)
+        if removed or added:
+            # notify Downstream schedulers to potentially pick up
+            # new schedulers now that we have removed and added some
+            def updateDownstreams(res):
+                log.msg("notifying downstream schedulers of changes")
+                for s in newschedulers:
+                    if interfaces.IDownstreamScheduler.providedBy(s):
+                        s.checkUpstreamScheduler()
+            d.addCallback(updateDownstreams)
         return d
 
     def loadConfig_Builders(self, newBuilderData):
@@ -927,4 +963,3 @@ components.registerAdapter(Control, BuildMaster, interfaces.IControl)
 
 # so anybody who can get a handle on the BuildMaster can cause a build with:
 #  IControl(master).getBuilder("full-2.3").requestBuild(buildrequest)
-

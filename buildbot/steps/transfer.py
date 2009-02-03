@@ -73,8 +73,27 @@ class StatusRemoteCommand(RemoteCommand):
         if 'stderr' in update:
             self.stderr = self.stderr + update['stderr'] + '\n'
 
+class _TransferBuildStep(BuildStep):
+    """
+    Base class for FileUpload and FileDownload to factor out common
+    functionality.
+    """
+    DEFAULT_WORKDIR = "build"           # is this redundant?
 
-class FileUpload(BuildStep):
+    def setDefaultWorkdir(self, workdir):
+        if self.workdir is None:
+            self.workdir = workdir
+
+    def _getWorkdir(self):
+        properties = self.build.getProperties()
+        if self.workdir is None:
+            workdir = self.DEFAULT_WORKDIR
+        else:
+            workdir = self.workdir
+        return properties.render(workdir)
+
+
+class FileUpload(_TransferBuildStep):
     """
     Build step to transfer a file from the slave to the master.
 
@@ -95,7 +114,7 @@ class FileUpload(BuildStep):
     name = 'upload'
 
     def __init__(self, slavesrc, masterdest,
-                 workdir="build", maxsize=None, blocksize=16*1024, mode=None,
+                 workdir=None, maxsize=None, blocksize=16*1024, mode=None,
                  **buildstep_kwargs):
         BuildStep.__init__(self, **buildstep_kwargs)
         self.addFactoryArguments(slavesrc=slavesrc,
@@ -141,7 +160,7 @@ class FileUpload(BuildStep):
         # default arguments
         args = {
             'slavesrc': source,
-            'workdir': self.workdir,
+            'workdir': self._getWorkdir(),
             'writer': fileWriter,
             'maxsize': self.maxsize,
             'blocksize': self.blocksize,
@@ -198,7 +217,7 @@ class _FileReader(pb.Referenceable):
             self.fp = None
 
 
-class FileDownload(BuildStep):
+class FileDownload(_TransferBuildStep):
     """
     Download the first 'maxsize' bytes of a file, from the buildmaster to the
     buildslave. Set the mode of the file
@@ -220,11 +239,10 @@ class FileDownload(BuildStep):
                    the buildslave process.
 
     """
-
     name = 'download'
 
     def __init__(self, mastersrc, slavedest,
-                 workdir="build", maxsize=None, blocksize=16*1024, mode=None,
+                 workdir=None, maxsize=None, blocksize=16*1024, mode=None,
                  **buildstep_kwargs):
         BuildStep.__init__(self, **buildstep_kwargs)
         self.addFactoryArguments(mastersrc=mastersrc,
@@ -281,7 +299,7 @@ class FileDownload(BuildStep):
             'maxsize': self.maxsize,
             'reader': fileReader,
             'blocksize': self.blocksize,
-            'workdir': self.workdir,
+            'workdir': self._getWorkdir(),
             'mode': self.mode,
             }
 
