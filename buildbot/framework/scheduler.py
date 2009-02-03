@@ -10,11 +10,13 @@ class Scheduler(pools.ServicePoolMember):
     L{buildbot.framework.interfaces.IScheduler} for requirements
     for subclasses.
     """
-    def __init__(self, name, action, project=None):
+    def __init__(self, name, action, project):
         pools.ServicePoolMember.__init__(self, name)
 
         self.action = action
         self.project = project
+
+        if self.project
 
     ##
     # Convenience methods for child methods

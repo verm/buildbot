@@ -11,7 +11,7 @@ class DummyScheduler(scheduler.Scheduler):
     """
     implements(interfaces.IScheduler)
 
-    def __init__(self, name, action, project=None):
+    def __init__(self, name, action, project):
         scheduler.Scheduler.__init__(self, name=name, action=action,
                                     project=project)
 
