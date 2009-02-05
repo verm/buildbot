@@ -218,8 +218,9 @@ class IContext(Interface):
 
     def subcontext(hist=None):
         """Create a shallow copy of this context object for use in a sub-step
-        or sub-build.  Keyword arguments are used to override attributes in
-        the subcontext."""
+        or sub-build.  The keyword arguments listed in the signature are all
+        optional, and can be used to override the eponymous attributes in the
+        subcontext."""
 
 ## History
 #
