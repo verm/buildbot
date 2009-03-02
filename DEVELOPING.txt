@@ -1,0 +1,10 @@
+This is Buildbot-1.0, so at present there's little else to do with it than
+hack on it.  Thanks!
+
+Getting Info
+============
+
+Information about this version is currently located on the wiki at GitHub
+(http://wiki.github.com/djmitche/buildbot).  This is not the final resting
+place for such documentation (and it's not really documentation, anyway), but
+will do for now.

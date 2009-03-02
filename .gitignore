@@ -23,3 +23,8 @@ docs/images/overview.png
 docs/images/slavebuilder.png
 docs/images/slaves.png
 docs/images/status.png
+*.egg-info
+.installed.cfg
+bin
+develop-eggs/
+eggs/
