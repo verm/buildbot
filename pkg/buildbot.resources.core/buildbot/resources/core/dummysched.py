@@ -3,7 +3,7 @@ from zope.interface import implements
 from twisted.python import log
 from twisted.internet import defer, reactor
 from buildbot.framework import scheduler, interfaces
-from buildbot import uthreads
+import uthreads
 
 class DummyScheduler(scheduler.Scheduler):
     """

@@ -5,7 +5,7 @@ from zope.interface import implements
 from twisted.python import log, components
 from twisted.internet import defer, reactor
 from buildbot.framework import interfaces, slaves
-from buildbot import uthreads
+import uthreads
 import buildbot
 
 class DummySlaveEnvironment(object):
