@@ -2,10 +2,10 @@
 # ex: set syntax=python:
 
 import re
-from buildbot import uthreads
-from buildbot.resources.schedulers.dummysched import DummyScheduler
-from buildbot.resources.history.ramhistory import RamHistoryManager
-from buildbot.resources.slaves.dummyslave import DummySlave
+import uthreads
+from buildbot.resources.core.dummysched import DummyScheduler
+from buildbot.resources.core.ramhistory import RamHistoryManager
+from buildbot.resources.core.dummyslave import DummySlave
 
 # create a history manager to store build history
 history = addHistoryManager(
