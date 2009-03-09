@@ -1,5 +1,6 @@
 import copy
-from zope.interface import implements
+from zope.interface import implements, directlyProvides
+from zope.interface import noLongerProvides, classProvides
 from twisted.python import log, components
 from twisted.internet import defer, reactor
 from buildbot.framework import interfaces
@@ -14,6 +15,7 @@ class Context(object):
     implements(interfaces.IContext)
 
     def __init__(self, project):
+        self.parent = None
         self.hist = project
 
     def subcontext(self, **kwargs):
@@ -24,35 +26,66 @@ class Context(object):
         return ctxt
 
 ##
-# Useful decorators for process functions
+# Top-level BuildProcess class
 
-def action(fn):
-    def spawn(ctxt, sourcestamp):
-        th = uthreads.spawn(fn(ctxt, sourcestamp))
-        return th
-    return spawn
-
-def build(buildName):
+class BuildProcess(object):
     """
-    Decorate a build function to create a new IBuildHistory when
-    called.  Used like this::
-      @spawnsBuild("archtest")
-      def archtest(arch):
-          # ...
 
-    Note that the new build runs in its own uThread, and begins with no slave
-    environments available.  The decorated function will return its uThread::
-      archthreads = [ archtest(arch) for arch in architectures ]
+    @ivar _uthread: the microthread in which run() is running
     """
-    def d(fn):
+
+    classProvides(interfaces.IBuildProcessFactory)
+
+    ## IBuildProcessFactory methods
+
+    def __init__(self, **kwargs):
+        self.args = kwargs
+        directlyProvides(self, interfaces.IBuildProcessFactory)
+
+    def _promote_factory_to_process(self):
+        assert interfaces.IBuildProcessFactory.providedBy(self), \
+            "this object is not a factory"
+        noLongerProvides(self, interfaces.IBuildProcessFactory)
+        directlyProvides(self, interfaces.IBuildProcess)
+        
+    def __call__(self, **kwargs):
+        newargs = self.args.copy()
+        newargs.update(kwargs)
+        return self.__class__(**newargs)
+
+    def spawn(self, ctxt, **kwargs):
+        assert interfaces.IBuildProcessFactory.providedBy(self), \
+            "this object is not a factory"
+        sub = self(**kwargs)
+        sub._promote_factory_to_process()
+
         @uthreads.uthreaded
-        def spawnBuild(ctxt, *args, **kwargs):
-            subctxt = ctxt.subcontext(
-                hist=(yield ctxt.hist.newBuild(buildName)))
-            th = uthreads.spawn(fn(subctxt, *args, **kwargs))
-            raise StopIteration(th)
-        return spawnBuild
-    return d
+        def kick_off_build():
+            subctxt = yield sub.make_context(ctxt)
+            yield sub.run(subctxt, **sub.args)
+
+        sub._uthread = uthreads.spawn(kick_off_build())
+
+        return sub
+
+    ## IBuildProcess methods
+
+    @uthreads.uthreaded
+    def run(self, ctxt, **kwargs):
+        assert interfaces.IBuildProcess.providedBy(self), \
+            "call spawn() to start a new build"
+        raise NotImplementedError("You should override the run() method")
+
+    @uthreads.uthreaded
+    def make_context(self, ctxt):
+        subhist = yield ctxt.hist.newBuild(self.make_history_name)
+        raise StopIteration(ctxt.subcontext(hist=subhist))
+
+    def make_history_name(self, ctxt):
+        return self.__class__.__name__
+
+##
+# Useful decorators for process functions
 
 def step(stepName):
     """
