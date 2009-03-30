@@ -3,23 +3,29 @@ from zope.interface import implements
 from twisted.python import log, components
 from twisted.internet import defer, reactor
 from twisted.application import service
-from buildbot.framework import pools, interfaces, process, exceptions
+from buildbot.framework import interfaces, process, exceptions
 from buildbot import uthreads
 
 # TODO: allow *remote* slaves
 
-class SlaveManager(service.Service, pools.Pool):
+class SlaveManager(service.MultiService):
     """
     See L{interfaces.ISlaveManager}.
     """
-    def __init__(self):
-        pools.Pool.__init__(self, useNewMembers=False)
+    def __init__(self, master, name):
+        service.MultiService.__init__(self)
+        def becomeOwned():
+            self.setName(name)
+            self.setServiceParent(master)
+        reactor.callWhenRunning(becomeOwned)
+
+        self.slaves = []
 
     @uthreads.uthreaded
     def getSlaveEnvironment(self, name, filter=None, wait=True):
         if filter is None: filter = lambda x : True
         candidates = [
-            sl for sl in self.poolmembers.values()
+            sl for sl in self.slaves
             if filter(sl)
         ]
 
@@ -35,19 +41,18 @@ class SlaveManager(service.Service, pools.Pool):
         assert interfaces.ISlaveEnvironment.providedBy(slenv)
         raise StopIteration(slenv)
 
-    @uthreads.uthreaded
-    def stopMember(self, slave):
-        pass
-        # slave.forceDisconnect()
+    def addSlave(self, slave):
+        slave.setManager(self)
+        self.slaves.append(slave)
 
-    # TODO: stopService -> stop all members
-
-class Slave(pools.PoolMember):
+class Slave(service.Service):
     """
     Class representing a slave; see L{interfaces.ISlave}.
 
     Instances of this class can be used directly in simple configurations.
     More complex configurations may require a subclass.
+
+    @ivar name: the name of this buildslave
 
     @ivar password: the password the remote machine will use when contacting
     the buildmaster
@@ -55,7 +60,9 @@ class Slave(pools.PoolMember):
     implements(interfaces.ISlave)
 
     def __init__(self, name, password):
-        pools.PoolMember.__init__(self, name)
+        self.name = name
         self.password = password
 
-    # TODO: emulateNewMember
+    def setManager(self, mgr):
+        self.setName(self.name)
+        self.setServiceParent(mgr)

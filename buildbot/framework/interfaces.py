@@ -18,9 +18,6 @@ class ISourceManager(Interface):
        repository on demand
      - providing additional information about SourceStamps on
        demand (previous, blamelist, changes, affected files, etc.)
-
-    All source manager classes must be subclasses of
-    L{buildbot.framework.pools.PoolMember}.
     """
 
     def subscribeToChanges(callable):

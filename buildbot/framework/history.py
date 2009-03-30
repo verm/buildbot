@@ -1,17 +1,19 @@
 from zope.interface import implements
 from twisted.python import log, components
+from twisted.application import service
 from twisted.internet import defer, reactor
-from buildbot.framework import pools, interfaces
+from buildbot.framework import interfaces
 from buildbot import uthreads
 
-class HistoryManager(pools.ServicePoolMember):
+class HistoryManager(service.Service):
     """
     Parent class for all history managers.  See
     L{buildbot.framework.interfaces.IHistoryManager} for requirements
     for subclasses.
     """
-    def __init__(self, name):
-        pools.ServicePoolMember.__init__(self, name)
+    def __init__(self, master, name):
+        self.setName(name)
+        self.setServiceParent(master)
 
 class HistoryElt(object):
     """

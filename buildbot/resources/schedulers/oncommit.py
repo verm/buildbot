@@ -8,9 +8,9 @@ from buildbot import uthreads
 class OnCommitScheduler(scheduler.Scheduler):
     implements(interfaces.IScheduler)
 
-    def __init__(self, name, action, project, sourcemanager):
-        scheduler.Scheduler.__init__(self, name=name, action=action,
-                                    project=project)
+    def __init__(self, master, name, action, project, sourcemanager):
+        scheduler.Scheduler.__init__(self, master=master, name=name,
+                        action=action, project=project)
         self.sourcemanager = sourcemanager
         self.subscription = None
 

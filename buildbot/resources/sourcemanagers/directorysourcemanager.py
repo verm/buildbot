@@ -13,8 +13,8 @@ class DirectorySourceStamp(object):
 class DirectorySourceManager(sourcemanager.SourceManager):
     implements(interfaces.ISourceManager)
 
-    def __init__(self, name, directory):
-        sourcemanager.SourceManager.__init__(self, name=name)
+    def __init__(self, master, name, directory):
+        sourcemanager.SourceManager.__init__(self, master=master, name=name)
 
         if not os.path.exists(directory):
             raise RuntimeError("Directory '%s' does not exist" % directory)

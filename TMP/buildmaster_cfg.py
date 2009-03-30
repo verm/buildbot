@@ -8,21 +8,21 @@ from buildbot.resources.history.ramhistory import RamHistoryManager
 from buildbot.resources.slaves.dummyslave import DummySlave
 
 # create a history manager to store build history
-history = addHistoryManager(
-    RamHistoryManager()
+history = RamHistoryManager(
+        master=master
     )
 
 # and a project
 project = history.getProject("stuffproj", create=True)
 
-srcmgr = addSourceManager(
-    DirectorySourceManager(
+srcmgr = DirectorySourceManager(
+        master=master,
         name="dir",
         directory="/tmp/BB/dropbox",
         # TODO:
         #isImportant = re.compile(r".*\.tar\.gz$").match,
         #interval=1,
-    ))
+    )
 
 def say(ctxt, what, slenv=None):
     if not slenv: slenv = ctxt.slenv
@@ -38,8 +38,8 @@ def yell(ctxt, what):
 @process.build("dostuff")
 def dostuff(ctxt, sourcestamp):
     # TODO: this is *too complex*:
-    slenv = (yield buildbot.buildmaster.slaves.getSlaveEnvironment("dostuff-1"))
-    ctxt.slenv = (yield buildbot.buildmaster.slaves.getSlaveEnvironment("dostuff-2"))
+    slenv = (yield buildbot.buildmaster.slaveManager.getSlaveEnvironment("dostuff-1"))
+    ctxt.slenv = (yield buildbot.buildmaster.slaveManager.getSlaveEnvironment("dostuff-2"))
     yield say(ctxt, "hello, %s" % sourcestamp, slenv=slenv)
     yield yell(ctxt, "cruel") # will use the default slave
     yield say(ctxt, "world")
@@ -58,20 +58,20 @@ def print_histelt(elt, indent=0):
 def act(ctxt, sourcestamp):
     yield dostuff(ctxt, sourcestamp)
     
-sched = addScheduler(
-    OnCommitScheduler(
+sched = OnCommitScheduler(
+        master=master,
         name="buildit",
         project=project,
         action=act,
         sourcemanager=srcmgr
-    ))
+    )
 
-addSlave(
+slaveManager.addSlave(
     DummySlave(
         name="worker1",
         password="hi",
     ))
-addSlave(
+slaveManager.addSlave(
     DummySlave(
         name="worker2",
         password="hi",

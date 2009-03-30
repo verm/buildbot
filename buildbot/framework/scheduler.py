@@ -1,17 +1,21 @@
 from zope.interface import implements
 from twisted.python import log, components
+from twisted.application import service
 from twisted.internet import defer, reactor
 from buildbot.framework import pools, interfaces, process
 from buildbot import uthreads
 
-class Scheduler(pools.ServicePoolMember):
+class Scheduler(service.Service):
     """
     Parent class for all schedulers.  See
     L{buildbot.framework.interfaces.IScheduler} for requirements
     for subclasses.
     """
-    def __init__(self, name, action, project):
-        pools.ServicePoolMember.__init__(self, name)
+    def __init__(self, master, name, action, project):
+        def becomeOwned():
+            self.setName(name)
+            self.setServiceParent(master)
+        reactor.callWhenRunning(becomeOwned)
 
         self.action = action
         self.project = project

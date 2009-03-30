@@ -13,7 +13,8 @@ class RamHistoryManager(history.HistoryManager):
 
     implements(interfaces.IHistoryManager)
 
-    def __init__(self, name="history"):
+    def __init__(self, master, name="history"):
+        history.HistoryManager.__init__(self, master, name)
         self.projects = {}
 
     @uthreads.uthreaded
