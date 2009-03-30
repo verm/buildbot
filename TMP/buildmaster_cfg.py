@@ -40,7 +40,7 @@ def dostuff(ctxt, sourcestamp):
     # TODO: this is *too complex*:
     slenv = (yield buildbot.buildmaster.slaves.getSlaveEnvironment("dostuff-1"))
     ctxt.slenv = (yield buildbot.buildmaster.slaves.getSlaveEnvironment("dostuff-2"))
-    yield say(ctxt, "hello", slenv=slenv)
+    yield say(ctxt, "hello, %s" % sourcestamp, slenv=slenv)
     yield yell(ctxt, "cruel") # will use the default slave
     yield say(ctxt, "world")
     yield slenv.shellCommand(ctxt, "pwd")
@@ -59,10 +59,11 @@ def act(ctxt, sourcestamp):
     yield dostuff(ctxt, sourcestamp)
     
 sched = addScheduler(
-    DummyScheduler(
+    OnCommitScheduler(
         name="buildit",
         project=project,
-        action=act
+        action=act,
+        sourcemanager=srcmgr
     ))
 
 addSlave(
