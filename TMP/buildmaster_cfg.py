@@ -15,13 +15,14 @@ history = addHistoryManager(
 # and a project
 project = history.getProject("stuffproj", create=True)
 
-#srcmgr = addSourceManager(
-#    DirectorySourceManager(
-#        name="dir",
-#        directory="/tmp/BB",
-#        isImportant = re.compile(r".*\.tar\.gz$").match,
-#        interval=1,
-#    ))
+srcmgr = addSourceManager(
+    DirectorySourceManager(
+        name="dir",
+        directory="/tmp/BB/dropbox",
+        # TODO:
+        #isImportant = re.compile(r".*\.tar\.gz$").match,
+        #interval=1,
+    ))
 
 def say(ctxt, what, slenv=None):
     if not slenv: slenv = ctxt.slenv

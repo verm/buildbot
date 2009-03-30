@@ -1,0 +1,16 @@
+#! /bin/bash
+
+BASE=$PWD
+export PYTHONPATH="${BASE}"
+
+[ -d /tmp/BB ] || mkdir /tmp/BB
+
+if [ -f /tmp/BB/master/twistd.pid ]; then
+    python ${BASE}/bin/buildbot stop /tmp/BB/master || exit 1
+fi
+
+rm -rf /tmp/BB/master
+python ${BASE}/bin/buildbot create-master -c "${BASE}/TMP/buildmaster_cfg.py" /tmp/BB/master || exit 1
+
+cd /tmp/BB
+twistd --nodaemon --logfile=- --pidfile=/tmp/BB/master/twistd.pid --no_save -y /tmp/BB/master/buildbot.tac || exit 1

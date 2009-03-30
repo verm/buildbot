@@ -46,7 +46,7 @@ class SubscriptionHandler:
         self.subscribers.add(newsub)
         return newsub
 
-    def __call__(self, *args, **kwargs):
+    def notify(self, *args, **kwargs):
         # make a copy of the set of subscribers to guard against
         # modification while we're iterating
         for sub in list(self.subscribers):

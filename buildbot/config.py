@@ -22,3 +22,4 @@ from buildbot.framework.slaves import Slave
 from buildbot.framework import process
 from buildbot.resources.history.ramhistory import RamHistoryManager
 from buildbot.resources.schedulers.dummysched import DummyScheduler
+from buildbot.resources.sourcemanagers.directorysourcemanager import DirectorySourceManager

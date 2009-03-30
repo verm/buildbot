@@ -24,4 +24,4 @@ class SourceManager(pools.ServicePoolMember):
         Send the given SourceStamp to all subscribers.  This should
         only be called from subclasses.  Returns a deferred.
         """
-        return self.subscribers(self, ss)
+        return self.subscribers.notify(self, ss)
