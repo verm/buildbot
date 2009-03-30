@@ -16,8 +16,6 @@ class Scheduler(pools.ServicePoolMember):
         self.action = action
         self.project = project
 
-        if self.project
-
     ##
     # Convenience methods for child methods
 
