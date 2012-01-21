@@ -201,7 +201,7 @@ class RunProcessPP(protocol.ProcessProtocol):
         self.command.finished(sig, rc)
 
 
-class RunProcess:
+class RunProcessBase:
     """
     This is a helper class, used by slave commands to run programs in a child
     shell.
@@ -280,7 +280,6 @@ class RunProcess:
         self.sendRC = sendRC
         self.logfiles = logfiles
         self.workdir = workdir
-        self.process = None
         if not os.path.exists(workdir):
             os.makedirs(workdir)
         if environ:
@@ -377,8 +376,24 @@ class RunProcess:
         if self.keepStderr:
             self.stderr = ""
         self.deferred = defer.Deferred()
+
+
         try:
-            self._startCommand()
+            argv = self._setupCommand()
+            self._startCommand(argv)
+
+            self.startTime = util.now(self._reactor)
+
+            # set up timeouts
+            if self.timeout:
+                self.timer = self._reactor.callLater(self.timeout, self.doTimeout)
+
+            if self.maxTime:
+                self.maxTimer = self._reactor.callLater(self.maxTime, self.doMaxTimeout)
+
+            for w in self.logFileWatchers:
+                w.start()
+
         except:
             log.msg("error in RunProcess._startCommand")
             log.err()
@@ -389,19 +404,16 @@ class RunProcess:
             self.deferred.errback(AbandonChain(-1))
         return self.deferred
 
-    def _startCommand(self):
-        # ensure workdir exists
-        if not os.path.isdir(self.workdir):
-            os.makedirs(self.workdir)
-        log.msg("RunProcess._startCommand")
+    def _setupCommand(self):
+        # setup the command to be run
+        log.msg("RunProcess._setupCommand")
+
         if self.notreally:
             self._addToBuffers('header', "command '%s' in dir %s" % \
                              (self.fake_command, self.workdir))
             self._addToBuffers('header', "(not really)\n")
             self.finished(None, 0)
             return
-
-        self.pp = RunProcessPP(self)
 
         if type(self.command) in types.StringTypes:
             if runtime.platformType  == 'win32':
@@ -485,46 +497,11 @@ class RunProcess:
         log.msg(" " + msg)
         self._addToBuffers('header', msg+"\n")
 
-        # put data into stdin and close it, if necessary.  This will be
-        # buffered until connectionMade is called
-        if self.initialStdin:
-            self.pp.setStdin(self.initialStdin)
+        # ensure workdir exists
+        if not os.path.isdir(self.workdir):
+            os.makedirs(self.workdir)
 
-        self.startTime = util.now(self._reactor)
-
-        # start the process
-
-        self.process = self._spawnProcess(
-                                 self.pp, argv[0], argv,
-                                 self.environ,
-                                 self.workdir,
-                                 usePTY=self.usePTY)
-
-        # set up timeouts
-
-        if self.timeout:
-            self.timer = self._reactor.callLater(self.timeout, self.doTimeout)
-
-        if self.maxTime:
-            self.maxTimer = self._reactor.callLater(self.maxTime, self.doMaxTimeout)
-
-        for w in self.logFileWatchers:
-            w.start()
-
-    def _spawnProcess(self, processProtocol, executable, args=(), env={},
-            path=None, uid=None, gid=None, usePTY=False, childFDs=None):
-        """private implementation of reactor.spawnProcess, to allow use of
-        L{ProcGroupProcess}"""
-
-        # use the ProcGroupProcess class, if available
-        if runtime.platformType == 'posix':
-            if self.useProcGroup and not usePTY:
-                return ProcGroupProcess(reactor, executable, args, env, path,
-                                    processProtocol, uid, gid, childFDs)
-
-        # fall back
-        return reactor.spawnProcess(processProtocol, executable, args, env,
-                                        path, usePTY=usePTY)
+        return argv
 
     def _chunkForSend(self, data):
         """
@@ -813,3 +790,37 @@ class RunProcess:
             self.sendStatus({'header': "using fake rc=-1\n"})
             self.sendStatus({'rc': -1})
         self.failed(RuntimeError("SIGKILL failed to kill process"))
+
+
+
+class RunProcessLocal(RunProcessBase):
+    def _startCommand(self, argv):
+        self.pp = RunProcessPP(self)
+
+        # put data into stdin and close it, if necessary.  This will be
+        # buffered until connectionMade is called
+        if self.initialStdin:
+            self.pp.setStdin(self.initialStdin)
+
+        # start the process
+        self.process = self._spawnProcess(
+                                 self.pp, argv[0], argv,
+                                 self.environ,
+                                 self.workdir,
+                                 usePTY=self.usePTY)
+
+    def _spawnProcess(self, processProtocol, executable, args=(), env={},
+            path=None, uid=None, gid=None, usePTY=False, childFDs=None):
+        """private implementation of reactor.spawnProcess, to allow use of
+        L{ProcGroupProcess}"""
+
+        # use the ProcGroupProcess class, if available
+        if runtime.platformType == 'posix':
+            if self.useProcGroup and not usePTY:
+                return ProcGroupProcess(reactor, executable, args, env, path,
+                                    processProtocol, uid, gid, childFDs)
+
+        # fall back
+        return reactor.spawnProcess(processProtocol, executable, args, env,
+                                        path, usePTY=usePTY)
+
