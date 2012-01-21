@@ -793,7 +793,12 @@ class RunProcessBase:
 
 
 
-class RunProcessLocal(RunProcessBase):
+class RunProcessSSH(RunProcessBase):
+    def _startCommand(self, argv):
+        return self.builder.sshpool.run(self, argv)
+
+
+RunProcess = RunProcessSSH
     def _startCommand(self, argv):
         self.pp = RunProcessPP(self)
 
