@@ -792,7 +792,6 @@ class RunProcessBase:
         self.failed(RuntimeError("SIGKILL failed to kill process"))
 
 
-
 class RunProcessLocal(RunProcessBase):
     def _startCommand(self, argv):
         self.pp = RunProcessPP(self)
@@ -824,3 +823,11 @@ class RunProcessLocal(RunProcessBase):
         return reactor.spawnProcess(processProtocol, executable, args, env,
                                         path, usePTY=usePTY)
 
+
+
+class RunProcessSSH(RunProcessBase):
+    def _startCommand(self, argv):
+        return self.builder.sshpool.run(self, argv)
+
+
+RunProcess = RunProcessSSH
