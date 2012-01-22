@@ -18,25 +18,32 @@ class BBClientTransport(SSHClientTransport):
 		self.argv = argv
 
 	def verifyHostKey(self, hostKey, fingerprint):
-		# XXX: add hostKey="" to SSHBuildSlave.
+		if fingerprint != self.command.builder.sshslave["fingerprint"]:
+			# Do something.
+			pass
+
 		print "Host fingerprint: %s" % fingerprint
 		return defer.succeed(True)
 
 	def connectionSecure(self):
 		cc = BBSSHConnection(self.command, self.argv)
-		auth = BBAuthClient("admin", cc)
+		auth = BBAuthClient("admin", cc, self.command)
 		self.requestService(auth)
 
 
 # BBAuthClient
 class BBAuthClient(SSHUserAuthClient):
+	def __init__(self, user, cc, command):
+		SSHUserAuthClient.__init__(self, user, cc)
+		self.sshslave = command.builder.sshslave
+
 	def getPublicKey(self):
-		path = "/mnt/devel/vm/bin/key/vm.pub"
-		return Key.fromFile(filename=path).blob()
+		key = Key.fromFile(filename=self.sshslave["publicKey"])
+		return key.blob()
 
 	def getPrivateKey(self):
-		path = "/mnt/devel/vm/bin/key/vm"
-		return defer.succeed(Key.fromFile(path).keyObject)
+		key = Key.fromFile(self.sshslave["privateKey"])
+		return defer.succeed(key.keyObject)
 
 
 # BBSSHConnection

@@ -76,7 +76,10 @@ class SlaveBuilder(pb.Referenceable, service.Service):
             "host": "barley",
             "port": 22,
             "timeout": 30,
-            "bindAddress": None
+            "bindAddress": None,
+            "fingerprint": "85:1a:27:3d:50:10:35:62:2f:87:bb:22:6a:7e:ce:40",
+            "publicKey": "/mnt/devel/vm/bin/key/vm.pub",
+            "privateKey": "/mnt/devel/vm/bin/key/vm"
         }
 
     def __repr__(self):
