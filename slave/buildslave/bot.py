@@ -29,8 +29,11 @@ from buildslave.pbutil import ReconnectingPBClientFactory
 from buildslave.commands import registry, base
 from buildslave import monkeypatches
 
+from ssh import SSHConnectionPool
+
 class UnknownCommand(pb.Error):
     pass
+
 
 class SlaveBuilder(pb.Referenceable, service.Service):
 
@@ -54,9 +57,27 @@ class SlaveBuilder(pb.Referenceable, service.Service):
     # when the step is started
     remoteStep = None
 
+    # SSH connection pool.
+    sshpool = None
+
+    # SSH slave details
+    sshslave = None
+
+    # SSH pool ID
+    sshpool_id = None
+
     def __init__(self, name):
         #service.Service.__init__(self) # Service has no __init__ method
         self.setName(name)
+
+        #XXX: hack
+        self.sshslave = {
+            "name": "ssh-1",
+            "host": "barley",
+            "port": 22,
+            "timeout": 30,
+            "bindAddress": None
+        }
 
     def __repr__(self):
         return "<SlaveBuilder '%s' at %d>" % (self.name, id(self))
@@ -241,6 +262,7 @@ class Bot(pb.Referenceable, service.MultiService):
         self.usePTY = usePTY
         self.unicode_encoding = unicode_encoding or sys.getfilesystemencoding() or 'ascii'
         self.builders = {}
+        self.sshpool = SSHConnectionPool()
 
     def startService(self):
         assert os.path.isdir(self.basedir)
@@ -270,6 +292,7 @@ class Bot(pb.Referenceable, service.MultiService):
                 b.unicode_encoding = self.unicode_encoding
                 b.setServiceParent(self)
                 b.setBuilddir(builddir)
+                b.sshpool = self.sshpool
                 self.builders[name] = b
             retval[name] = b
         for name in self.builders.keys():
