@@ -735,6 +735,92 @@ class BuildSlave(AbstractBuildSlave):
         # builders, then it's safe to disconnect
         self.maybeShutdown()
 
+
+
+# This this is a temp class to keep code separated for now... it's possible that
+# it may become a permanent fixture.
+class SSHBuildSlaveParent(BuildSlave):
+    # List of SSHSlaves off this BS.
+    sshslaves = {}
+
+    def attached(self, bot):
+        BuildSlave.attached(self, bot)
+        for slave in self.sshslaves:
+            log.msg("Attaching SSHSlave: %s on %s" % (slave, self.slavename))
+            self.sshslaves[slave].attached(bot)
+
+    def detached(self, mind):
+        BuildSlave.detached(self, mind)
+        for slave in self.sshslaves:
+            log.msg("Detaching SSHSlave: %s on %s" % (slave, self.slavename))
+            self.sshslaves[slave].detached(mind)
+
+    #XXX: this is a clone for testing purposes I'll figure out something nicer later on.
+    def sendBuilderList(self):
+        our_builders = self.botmaster.getBuildersForSlave(self.slavename)
+
+        # Fold all the sshslave builders into one giant list.
+        for sshslave in self.sshslaves:
+            blist = self.botmaster.getBuildersForSlave(sshslave)
+            our_builders += blist
+
+        blist = [(b.name, b.config.slavebuilddir) for b in our_builders]
+        if blist == self._old_builder_list:
+            return defer.succeed(None)
+
+        d = self.slave.callRemote("setBuilderList", blist)
+        def sentBuilderList(ign):
+            self._old_builder_list = blist
+            return ign
+        d.addCallback(sentBuilderList)
+        return d
+
+
+class SSHBuildSlave(BuildSlave):
+    def __init__(self, parent, name, host, port=22, timeout=30, bindAddress=None,
+                fingerprint=None, publicKey=None, privateKey=None,
+                max_builds=None, locks=None, properties={}, notify_on_missing=[]):
+
+        BuildSlave.__init__(self, name, "", notify_on_missing=notify_on_missing,
+            properties=properties, locks=locks, max_builds=max_builds)
+
+        self.sshslave = {
+            "name": name,
+            "host": host,
+            "port": port,
+            "timeout": timeout,
+            "bindAddress": bindAddress,
+            "fingerprint": fingerprint,
+            "publicKey": publicKey,
+            "privateKey": privateKey
+        }
+
+        parent.sshslaves[name] = self
+
+    # XXX: This should be in SSHBuildSlaveMaster::attached() and send a generated dictionary at once.
+    def attached(self, bot):
+        d = BuildSlave.attached(self, bot)
+        our_builders = self.botmaster.getBuildersForSlave(self.slavename)
+
+        # No builders on this sshslave.
+        if our_builders == []:
+            return d
+
+        blist = [b.name for b in our_builders]
+
+        def sendConfig(res):
+            d = self.slave.callRemote("setSSHSlaveConfig", blist, self.sshslave)
+            return res
+
+        d.addErrback(log.err, 'while sending SSHSlave config')
+
+        return d.addCallback(sendConfig)
+
+    def startKeepaliveTimer(self):
+        # Only used for the parent.
+        pass
+
+
 class AbstractLatentBuildSlave(AbstractBuildSlave):
     """A build slave that will start up a slave instance when needed.
 

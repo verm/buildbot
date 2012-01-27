@@ -70,18 +70,6 @@ class SlaveBuilder(pb.Referenceable, service.Service):
         #service.Service.__init__(self) # Service has no __init__ method
         self.setName(name)
 
-        #XXX: hack
-        self.sshslave = {
-            "name": "ssh-1",
-            "host": "barley",
-            "port": 22,
-            "timeout": 30,
-            "bindAddress": None,
-            "fingerprint": "85:1a:27:3d:50:10:35:62:2f:87:bb:22:6a:7e:ce:40",
-            "publicKey": "/mnt/devel/vm/bin/key/vm.pub",
-            "privateKey": "/mnt/devel/vm/bin/key/vm"
-        }
-
     def __repr__(self):
         return "<SlaveBuilder '%s' at %d>" % (self.name, id(self))
 
@@ -311,6 +299,18 @@ class Bot(pb.Referenceable, service.MultiService):
                             "being used by the buildmaster: you can delete "
                             "it now" % d)
         return retval
+
+    def remote_setSSHSlaveConfig(self, blist, config):
+        log.msg("setSSHSlaveConfig: %s" % ", ".join(blist))
+        for builder in blist:
+            b = self.builders.get(builder, None)
+            assert b
+
+            if b.sshslave and b.sshslave != config:
+                log.msg("changing config for sshslave %s" % config["name"])
+
+            b.sshslave = config
+        return
 
     def remote_print(self, message):
         log.msg("message from master:", message)
