@@ -18,7 +18,10 @@ class BBClientTransport(SSHClientTransport):
 		self.argv = argv
 
 	def verifyHostKey(self, hostKey, fingerprint):
-		if fingerprint != self.command.builder.sshslave["fingerprint"]:
+
+		if self.command.builder.sshslave["fingerprint"] is None:
+			pass
+		elif fingerprint != self.command.builder.sshslave["fingerprint"]:
 			# Do something.
 			pass
 
