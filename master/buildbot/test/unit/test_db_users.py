@@ -123,6 +123,38 @@ class TestUsersConnectorComponent(connector_component.ConnectorComponentMixin,
         d.addCallback(check_user)
         return d
 
+    def test_findUser_existing(self):
+        d = self.insertTestData(self.user1_rows)
+        d = self.insertTestData(self.user2_rows)
+        d = self.insertTestData(self.user3_rows)
+        d.addCallback(lambda _ : self.db.users.findUserByAttr(
+                                  identifier='lye',
+                                  attr_type='git',
+                                  attr_data='Tyler Durden <tyler@mayhem.net>'))
+        def check_user(uid):
+            self.assertEqual(uid, 2)
+            def thd(conn):
+                users_tbl = self.db.model.users
+                users_info_tbl = self.db.model.users_info
+                users = conn.execute(users_tbl.select()).fetchall()
+                infos = conn.execute(users_info_tbl.select()).fetchall()
+                self.assertEqual((
+                    sorted([ tuple(u) for u in users]),
+                    sorted([ tuple(i) for i in infos])
+                ), (
+                    [
+                        (1L, u'soap', None, None),
+                        (2L, u'lye', None, None),
+                        (3L, u'marla', u'marla', u'cancer'),
+                    ], [
+                        (1L, u'IPv9', u'0578cc6.8db024'),
+                        (2L, u'git', u'Tyler Durden <tyler@mayhem.net>'),
+                        (2L, u'irc', u'durden')
+                    ]))
+            return self.db.pool.do(thd)
+        d.addCallback(check_user)
+        return d
+
     def test_addUser_race(self):
         def race_thd(conn):
             # note that this assumes that both inserts can happen "at once".
