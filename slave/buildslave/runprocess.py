@@ -280,8 +280,6 @@ class RunProcessBase:
         self.sendRC = sendRC
         self.logfiles = logfiles
         self.workdir = workdir
-        if not os.path.exists(workdir):
-            os.makedirs(workdir)
         if environ:
             for key in environ:
                 if isinstance(environ[key], list):
@@ -496,10 +494,6 @@ class RunProcessBase:
         msg = " using PTY: %s" % bool(self.usePTY)
         log.msg(" " + msg)
         self._addToBuffers('header', msg+"\n")
-
-        # ensure workdir exists
-        if not os.path.isdir(self.workdir):
-            os.makedirs(self.workdir)
 
         return argv
 
@@ -795,6 +789,10 @@ class RunProcessBase:
 class RunProcessLocal(RunProcessBase):
     def _startCommand(self, argv):
         self.pp = RunProcessPP(self)
+
+        # ensure workdir exists
+        if not os.path.isdir(self.workdir):
+            os.makedirs(self.workdir)
 
         # put data into stdin and close it, if necessary.  This will be
         # buffered until connectionMade is called
