@@ -13,9 +13,9 @@ defer.setDebugging(True)
 
 # BBClientTransport
 class BBClientTransport(SSHClientTransport):
-	def __init__(self, command, argv):
+	def __init__(self, command, channel):
 		self.command = command
-		self.argv = argv
+		self.channel = channel
 
 	def verifyHostKey(self, hostKey, fingerprint):
 
@@ -29,7 +29,7 @@ class BBClientTransport(SSHClientTransport):
 		return defer.succeed(True)
 
 	def connectionSecure(self):
-		cc = BBSSHConnection(self.command, self.argv)
+		cc = BBSSHConnection(self.command, self.channel)
 		auth = BBAuthClient("admin", cc, self.command)
 		self.requestService(auth)
 
@@ -51,17 +51,16 @@ class BBAuthClient(SSHUserAuthClient):
 
 # BBSSHConnection
 class BBSSHConnection(SSHConnection):
-	def __init__(self, command, argv):
+	def __init__(self, command, channel):
 		SSHConnection.__init__(self)
 		self.command = command
-		self.argv = argv
+		self.channel = channel
 
 	def serviceStarted(self):
 		sshpool = self.command.builder.sshpool
 		sshpool.add(self, self.command)
 
-		channel = BBSSHChannel(self.command, self.argv)
-		self.openChannel(channel)
+		self.openChannel(self.channel)
 
 
 # BBSSHChannel
@@ -98,8 +97,6 @@ class BBSSHChannel(SSHChannel):
 #		self.loseConnection()
 		self.command.builder.sshpool.free(self.command)
 
-
-
 class SSHConnectionPool:
 	pool = {}
 	id_count = 0
@@ -118,7 +115,9 @@ class SSHConnectionPool:
 				channel = BBSSHChannel(command, argv)
 				return self.pool[name][i]["conn"].openChannel(channel)
 
-		p = ClientCreator(reactor, BBClientTransport, command, argv)
+
+		channel = BBSSHChannel(command, argv)
+		p = ClientCreator(reactor, BBClientTransport, command, channel)
 		d = p.connectTCP(
 			sshslave["host"],
 			sshslave["port"],
