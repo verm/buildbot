@@ -354,3 +354,19 @@ class SlaveFileDownloadCommand(TransferCommand):
             self.fp.close()
 
         return TransferCommand.finished(self, res)
+
+
+class SSHSlaveDirectoryUploadCommand(SlaveDirectoryUploadCommand):
+    def start(self):
+        self.log("uploadDirectory is not implemented yet.")
+        raise AbandonChain(-1)
+
+
+class SSHSlaveFileUploadCommand:
+    pass
+
+
+class SSHSlaveFileDownloadCommand:
+    pass
+
+

@@ -18,9 +18,9 @@ from twisted.python import reflect
 commandRegistry = {
     # command name : fully qualified factory name (callable)
     "shell" : "buildslave.commands.shell.SlaveShellCommand",
-    "uploadFile" : "buildslave.commands.transfer.SlaveFileUploadCommand",
-    "uploadDirectory" : "buildslave.commands.transfer.SlaveDirectoryUploadCommand",
-    "downloadFile" : "buildslave.commands.transfer.SlaveFileDownloadCommand",
+    "uploadFile" : "buildslave.commands.transfer.SSHSlaveFileUploadCommand",
+    "uploadDirectory" : "buildslave.commands.transfer.SSHSlaveDirectoryUploadCommand",
+    "downloadFile" : "buildslave.commands.transfer.SSHSlaveFileDownloadCommand",
     "svn" : "buildslave.commands.svn.SVN",
     "bk" : "buildslave.commands.bk.BK",
     "cvs" : "buildslave.commands.cvs.CVS",
