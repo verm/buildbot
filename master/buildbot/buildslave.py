@@ -777,7 +777,7 @@ class SSHBuildSlaveParent(BuildSlave):
 
 
 class SSHBuildSlave(BuildSlave):
-    def __init__(self, parent, name, host, port=22, timeout=30, bindAddress=None,
+    def __init__(self, parent, name, login, host, port=22, timeout=30, bindAddress=None,
                 fingerprint=None, publicKey=None, privateKey=None,
                 max_builds=None, locks=None, properties={}, notify_on_missing=[]):
 
@@ -786,6 +786,7 @@ class SSHBuildSlave(BuildSlave):
 
         self.sshslave = {
             "name": name,
+            "login": login,
             "host": host,
             "port": port,
             "timeout": timeout,

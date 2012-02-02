@@ -16,12 +16,13 @@ class BBClientTransport(SSHClientTransport):
 	def __init__(self, command, channel):
 		self.command = command
 		self.channel = channel
+		self.sshslave = self.command.builder.sshslave
 
 	def verifyHostKey(self, hostKey, fingerprint):
 
-		if self.command.builder.sshslave["fingerprint"] is None:
+		if self.sshslave["fingerprint"] is None:
 			pass
-		elif fingerprint != self.command.builder.sshslave["fingerprint"]:
+		elif fingerprint != self.sshslave["fingerprint"]:
 			# Do something.
 			pass
 
@@ -30,7 +31,7 @@ class BBClientTransport(SSHClientTransport):
 
 	def connectionSecure(self):
 		cc = BBSSHConnection(self.command, self.channel)
-		auth = BBAuthClient("admin", cc, self.command)
+		auth = BBAuthClient(self.sshslave["login"], cc, self.command)
 		self.requestService(auth)
 
 
