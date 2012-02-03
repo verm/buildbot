@@ -102,7 +102,8 @@ class SSHConnectionPool:
 	pool = {}
 	id_count = 0
 
-	def run(self, command, argv):
+	# Get a connection from the pool or return a new one.
+	def _get(self, command, channel):
 		sshslave = command.builder.sshslave
 		name = sshslave["name"]
 
@@ -113,11 +114,8 @@ class SSHConnectionPool:
 				self.pool[name][i]["id"] = id
 				command.builder.sshpool_id = id
 
-				channel = BBSSHChannel(command, argv)
 				return self.pool[name][i]["conn"].openChannel(channel)
 
-
-		channel = BBSSHChannel(command, argv)
 		p = ClientCreator(reactor, BBClientTransport, command, channel)
 		d = p.connectTCP(
 			sshslave["host"],
@@ -127,6 +125,11 @@ class SSHConnectionPool:
 
 		# XXX: If sshpool.workdir != workdir insert a deferred to change the directory.
 		return d
+
+	# Run a command
+	def run(self, command, argv):
+		channel = BBSSHChannel(command, argv)
+		return self._get(command, channel)
 
 
 	def add(self, conn, command):
@@ -159,4 +162,3 @@ class SSHConnectionPool:
 		# locking disaster?
 		self.id_count += 1
 		return self.id_count
-
